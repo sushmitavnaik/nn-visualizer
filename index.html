@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Neural Net Visualizer</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, sans-serif;
+      background: #0f0f13;
+      color: #e8e6f0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      padding: 16px 32px;
+      border-bottom: 1px solid #2a2840;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    header h1 { font-size: 18px; font-weight: 500; color: #c4b5fd; }
+
+    .phase-badge {
+      font-size: 11px; padding: 4px 10px;
+      background: #1e1b35; border: 1px solid #3d3660;
+      border-radius: 20px; color: #a78bfa;
+    }
+
+    .app-body {
+      display: grid;
+      grid-template-columns: 240px 1fr;
+      flex: 1;
+      min-height: 0;
+    }
+
+    .sidebar {
+      border-right: 1px solid #2a2840;
+      padding: 20px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 22px;
+      overflow-y: auto;
+    }
+
+    .section-label {
+      font-size: 10px; text-transform: uppercase;
+      letter-spacing: 0.07em; color: #6b7280; margin-bottom: 10px;
+    }
+
+    .slider-row {
+      display: flex; align-items: center;
+      gap: 10px; margin-bottom: 10px;
+    }
+    .slider-row span { font-size: 12px; color: #9ca3af; min-width: 90px; }
+    .slider-row strong { font-size: 13px; color: #c4b5fd; min-width: 20px; text-align: right; }
+
+    input[type=range] { flex: 1; accent-color: #7c3aed; cursor: pointer; }
+
+    .btn-group { display: flex; gap: 6px; flex-wrap: wrap; }
+
+    .tog-btn {
+      font-size: 11px; padding: 5px 10px;
+      border-radius: 6px; border: 1px solid #3d3660;
+      background: transparent; color: #9ca3af;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .tog-btn.active {
+      background: #1e1b35; border-color: #7c3aed; color: #c4b5fd;
+    }
+    .tog-btn.warning {
+      background: #2a1a1a; border-color: #7c2020; color: #f87171;
+    }
+
+    .info-box {
+      background: #1a1730; border: 1px solid #2a2840;
+      border-radius: 8px; padding: 12px;
+    }
+    .info-box p { font-size: 12px; color: #9ca3af; line-height: 1.6; }
+    .info-box strong { color: #c4b5fd; }
+
+    .stats-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .stat-card {
+      background: #1a1730; border: 1px solid #2a2840;
+      border-radius: 8px; padding: 10px;
+      text-align: center;
+    }
+    .stat-card .val { font-size: 20px; font-weight: 500; color: #c4b5fd; }
+    .stat-card .lbl { font-size: 10px; color: #6b7280; margin-top: 2px; }
+
+    .warning-box {
+      background: #1e1010; border: 1px solid #7c2020;
+      border-radius: 8px; padding: 10px;
+      font-size: 11px; color: #f87171; line-height: 1.5;
+      display: none;
+    }
+    .warning-box.visible { display: block; }
+
+    .preset-btn {
+      width: 100%; text-align: left;
+      font-size: 11px; padding: 7px 10px;
+      border-radius: 6px; border: 1px solid #2a2840;
+      background: #1a1730; color: #9ca3af;
+      cursor: pointer; transition: all 0.15s;
+      margin-bottom: 5px;
+    }
+    .preset-btn:hover { border-color: #7c3aed; color: #c4b5fd; }
+    .preset-btn .preset-name { font-weight: 500; color: #c4b5fd; display: block; }
+    .preset-btn .preset-desc { font-size: 10px; color: #6b7280; margin-top: 2px; }
+
+    .concept-tag {
+      display: inline-block; font-size: 10px;
+      padding: 3px 8px; background: #1e1b35;
+      border: 1px solid #3d3660; border-radius: 20px;
+      color: #a78bfa; margin: 2px;
+    }
+
+    .main {
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 24px; gap: 16px; position: relative;
+    }
+
+    #net-canvas { width: 100%; max-width: 860px; }
+
+    .legend {
+      display: flex; gap: 16px; font-size: 11px;
+      color: #6b7280; flex-wrap: wrap; justify-content: center;
+    }
+    .legend-item { display: flex; align-items: center; gap: 5px; }
+    .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+    /* Tooltip */
+    #tooltip {
+      position: fixed; pointer-events: none;
+      background: #1a1730; border: 1px solid #3d3660;
+      border-radius: 8px; padding: 10px 12px;
+      font-size: 11px; color: #e8e6f0;
+      line-height: 1.7; z-index: 999;
+      opacity: 0; transition: opacity 0.15s;
+      max-width: 200px;
+    }
+    #tooltip.visible { opacity: 1; }
+    #tooltip .tt-title { font-weight: 500; color: #c4b5fd; margin-bottom: 4px; font-size: 12px; }
+    #tooltip .tt-row { color: #9ca3af; }
+    #tooltip .tt-row span { color: #e8e6f0; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Neural Net Visualizer</h1>
+  <span class="phase-badge">Phase 1 — Architecture</span>
+</header>
+
+<div class="app-body">
+  <div class="sidebar">
+
+    <!-- Shape controls -->
+    <div>
+      <div class="section-label">Network shape</div>
+      <div class="slider-row">
+        <span>Hidden layers</span>
+        <input type="range" id="layers" min="1" max="4" value="2" step="1"/>
+        <strong id="layers-out">2</strong>
+      </div>
+      <div class="slider-row">
+        <span>Neurons/layer</span>
+        <input type="range" id="neurons" min="2" max="8" value="4" step="1"/>
+        <strong id="neurons-out">4</strong>
+      </div>
+    </div>
+
+    <!-- Activation -->
+    <div>
+      <div class="section-label">Activation function</div>
+      <div class="btn-group">
+        <button class="tog-btn active" onclick="setActivation(this,'ReLU')">ReLU</button>
+        <button class="tog-btn" onclick="setActivation(this,'Sigmoid')">Sigmoid</button>
+        <button class="tog-btn" onclick="setActivation(this,'Tanh')">Tanh</button>
+      </div>
+    </div>
+
+    <!-- Weight init -->
+    <div>
+      <div class="section-label">Weight initialization</div>
+      <div class="btn-group">
+        <button class="tog-btn active" onclick="setInit(this,'Random')">Random</button>
+        <button class="tog-btn" onclick="setInit(this,'Xavier')">Xavier</button>
+        <button class="tog-btn" onclick="setInit(this,'He')">He</button>
+      </div>
+      <div style="margin-top:8px; font-size:11px; color:#6b7280; line-height:1.5" id="init-desc">
+        Weights drawn from a uniform random distribution.
+      </div>
+    </div>
+
+    <!-- Presets -->
+    <div>
+      <div class="section-label">Architecture presets</div>
+      <button class="preset-btn" onclick="applyPreset(1,2,'ReLU','Random')">
+        <span class="preset-name">Shallow</span>
+        <span class="preset-desc">1 hidden layer · struggles with spiral</span>
+      </button>
+      <button class="preset-btn" onclick="applyPreset(4,2,'ReLU','He')">
+        <span class="preset-name">Deep narrow</span>
+        <span class="preset-desc">4 layers · 2 neurons each</span>
+      </button>
+      <button class="preset-btn" onclick="applyPreset(2,8,'ReLU','He')">
+        <span class="preset-name">Deep wide</span>
+        <span class="preset-desc">2 layers · 8 neurons each</span>
+      </button>
+      <button class="preset-btn" onclick="applyPreset(3,4,'Sigmoid','Xavier')">
+        <span class="preset-name">Classic sigmoid</span>
+        <span class="preset-desc">Xavier init · good baseline</span>
+      </button>
+    </div>
+
+    <!-- Network stats -->
+    <div>
+      <div class="section-label">Network summary</div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="val" id="stat-neurons">-</div><div class="lbl">Total neurons</div></div>
+        <div class="stat-card"><div class="val" id="stat-weights">-</div><div class="lbl">Total weights</div></div>
+        <div class="stat-card"><div class="val" id="stat-params">-</div><div class="lbl">Parameters</div></div>
+        <div class="stat-card"><div class="val" id="stat-depth">-</div><div class="lbl">Depth</div></div>
+      </div>
+      <div class="warning-box" id="overfit-warning">
+        ⚠ <strong>Overfit risk:</strong> This network has many parameters relative to a small dataset. It may memorise rather than learn. You'll see this in Phase 5.
+      </div>
+    </div>
+
+    <!-- Concepts -->
+    <div>
+      <div class="section-label">Concepts in this phase</div>
+      <span class="concept-tag">input layer</span>
+      <span class="concept-tag">hidden layers</span>
+      <span class="concept-tag">output layer</span>
+      <span class="concept-tag">weights</span>
+      <span class="concept-tag">neurons</span>
+      <span class="concept-tag">architecture</span>
+      <span class="concept-tag">weight init</span>
+      <span class="concept-tag">parameters</span>
+      <span class="concept-tag">depth vs width</span>
+    </div>
+
+  </div>
+
+  <div class="main">
+    <svg id="net-canvas"></svg>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#7c3aed"></div><span>Input layer</span></div>
+      <div class="legend-item"><div class="legend-dot" style="background:#0ea5e9"></div><span>Hidden layer</span></div>
+      <div class="legend-item"><div class="legend-dot" style="background:#10b981"></div><span>Output layer</span></div>
+      <div class="legend-item"><div class="legend-dot" style="background:#4f46e5"></div><span>Positive weight</span></div>
+      <div class="legend-item"><div class="legend-dot" style="background:#be185d"></div><span>Negative weight</span></div>
+      <div class="legend-item" style="gap:8px"><div style="height:2px;width:24px;background:#6b7280;margin-top:4px"></div><span>Thickness = weight strength</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- Tooltip -->
+<div id="tooltip">
+  <div class="tt-title" id="tt-title"></div>
+  <div class="tt-row">Layer: <span id="tt-layer"></span></div>
+  <div class="tt-row">Inputs: <span id="tt-inputs"></span></div>
+  <div class="tt-row">Outputs: <span id="tt-outputs"></span></div>
+  <div class="tt-row">Activation: <span id="tt-act"></span></div>
+  <div class="tt-row">Init: <span id="tt-init"></span></div>
+</div>
+
+<script>
+  const svg = document.getElementById('net-canvas');
+  const tooltip = document.getElementById('tooltip');
+  let activation = 'ReLU';
+  let initMethod = 'Random';
+
+  const INPUT_NEURONS = 2;
+  const OUTPUT_NEURONS = 1;
+
+  const initDescs = {
+    Random: 'Weights drawn from a uniform random distribution.',
+    Xavier: 'Glorot init: scales weights by layer size. Best for Sigmoid/Tanh.',
+    He: 'He init: scales for ReLU. Prevents vanishing gradients in deep nets.'
+  };
+
+  function getLayers() {
+    const h = parseInt(document.getElementById('layers').value);
+    const n = parseInt(document.getElementById('neurons').value);
+    const arr = [INPUT_NEURONS];
+    for (let i = 0; i < h; i++) arr.push(n);
+    arr.push(OUTPUT_NEURONS);
+    return arr;
+  }
+
+  function getWeight(fanIn, fanOut) {
+    if (initMethod === 'Xavier') {
+      const limit = Math.sqrt(6 / (fanIn + fanOut));
+      return (Math.random() * 2 - 1) * limit;
+    } else if (initMethod === 'He') {
+      const std = Math.sqrt(2 / fanIn);
+      const u1 = Math.random(), u2 = Math.random();
+      const normal = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+      return normal * std;
+    }
+    return (Math.random() * 2 - 1);
+  }
+
+  function updateStats(layers) {
+    const totalNeurons = layers.reduce((a, b) => a + b, 0);
+    let totalWeights = 0;
+    let totalParams = 0;
+    for (let i = 0; i < layers.length - 1; i++) {
+      totalWeights += layers[i] * layers[i + 1];
+      totalParams += layers[i] * layers[i + 1] + layers[i + 1];
+    }
+    document.getElementById('stat-neurons').textContent = totalNeurons;
+    document.getElementById('stat-weights').textContent = totalWeights;
+    document.getElementById('stat-params').textContent = totalParams;
+    document.getElementById('stat-depth').textContent = layers.length;
+
+    const warn = document.getElementById('overfit-warning');
+    if (totalParams > 150) {
+      warn.classList.add('visible');
+    } else {
+      warn.classList.remove('visible');
+    }
+  }
+
+  function showTooltip(e, layerIdx, neuronIdx, layers) {
+    const layerNames = ['Input', ...layers.slice(1, -1).map((_, i) => `Hidden ${i+1}`), 'Output'];
+    const isInput = layerIdx === 0;
+    const isOutput = layerIdx === layers.length - 1;
+    const inputs = isInput ? 0 : layers[layerIdx - 1];
+    const outputs = isOutput ? 0 : layers[layerIdx + 1];
+
+    let neuronName = '';
+    if (isInput) neuronName = neuronIdx === 0 ? 'Input x₁ (x coordinate)' : 'Input x₂ (y coordinate)';
+    else if (isOutput) neuronName = 'Output neuron (prediction ŷ)';
+    else neuronName = `Hidden neuron ${neuronIdx + 1}`;
+
+    document.getElementById('tt-title').textContent = neuronName;
+    document.getElementById('tt-layer').textContent = layerNames[layerIdx];
+    document.getElementById('tt-inputs').textContent = isInput ? 'External data' : inputs;
+    document.getElementById('tt-outputs').textContent = isOutput ? 'Final prediction' : outputs;
+    document.getElementById('tt-act').textContent = isInput ? 'None (raw input)' : activation;
+    document.getElementById('tt-init').textContent = isInput ? 'N/A' : initMethod;
+
+    tooltip.style.left = (e.clientX + 14) + 'px';
+    tooltip.style.top = (e.clientY - 10) + 'px';
+    tooltip.classList.add('visible');
+  }
+
+  function hideTooltip() {
+    tooltip.classList.remove('visible');
+  }
+
+  function drawNetwork() {
+    const layers = getLayers();
+    updateStats(layers);
+
+    const W = Math.max(400, svg.parentElement.clientWidth - 48);
+    const H = 440;
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    svg.setAttribute('height', H);
+    svg.innerHTML = '';
+
+    const layerX = layers.map((_, i) => (W / (layers.length + 1)) * (i + 1));
+    const neuronY = layers.map(count => {
+      const spacing = Math.min(68, (H - 80) / count);
+      const total = (count - 1) * spacing;
+      const startY = H / 2 - total / 2;
+      return Array.from({ length: count }, (_, j) => startY + j * spacing);
+    });
+
+    const weights = layers.map((count, l) => {
+      if (l === layers.length - 1) return [];
+      return Array.from({ length: count }, () =>
+        Array.from({ length: layers[l + 1] }, () => getWeight(count, layers[l + 1]))
+      );
+    });
+
+    // Draw connections
+    for (let l = 0; l < layers.length - 1; l++) {
+      for (let i = 0; i < layers[l]; i++) {
+        for (let j = 0; j < layers[l + 1]; j++) {
+          const w = weights[l][i][j];
+          const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+          line.setAttribute('x1', layerX[l]);
+          line.setAttribute('y1', neuronY[l][i]);
+          line.setAttribute('x2', layerX[l + 1]);
+          line.setAttribute('y2', neuronY[l + 1][j]);
+          line.setAttribute('stroke', w > 0 ? '#4f46e5' : '#be185d');
+          line.setAttribute('stroke-width', Math.min(Math.abs(w) * 3 + 0.4, 4));
+          line.setAttribute('opacity', Math.min(Math.abs(w) * 0.8 + 0.1, 0.85));
+          svg.appendChild(line);
+        }
+      }
+    }
+
+    // Draw neurons
+    const colors = ['#7c3aed', '#0ea5e9', '#10b981'];
+    layers.forEach((count, l) => {
+      const color = l === 0 ? colors[0] : l === layers.length - 1 ? colors[2] : colors[1];
+
+      // Layer label
+      const layerLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      layerLabel.setAttribute('x', layerX[l]);
+      layerLabel.setAttribute('y', 16);
+      layerLabel.setAttribute('text-anchor', 'middle');
+      layerLabel.setAttribute('fill', '#6b7280');
+      layerLabel.setAttribute('font-size', '11');
+      layerLabel.textContent = l === 0 ? 'Input' : l === layers.length - 1 ? 'Output' : `Hidden ${l}`;
+      svg.appendChild(layerLabel);
+
+      // Neuron count below label
+      const countLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      countLabel.setAttribute('x', layerX[l]);
+      countLabel.setAttribute('y', 28);
+      countLabel.setAttribute('text-anchor', 'middle');
+      countLabel.setAttribute('fill', '#4b5563');
+      countLabel.setAttribute('font-size', '10');
+      countLabel.textContent = `${count} neuron${count > 1 ? 's' : ''}`;
+      svg.appendChild(countLabel);
+
+      neuronY[l].forEach((cy, ni) => {
+        // Outer glow ring
+        const glow = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        glow.setAttribute('cx', layerX[l]);
+        glow.setAttribute('cy', cy);
+        glow.setAttribute('r', 22);
+        glow.setAttribute('fill', 'none');
+        glow.setAttribute('stroke', color);
+        glow.setAttribute('stroke-width', '1');
+        glow.setAttribute('opacity', '0.2');
+        svg.appendChild(glow);
+
+        // Main circle
+        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        circle.setAttribute('cx', layerX[l]);
+        circle.setAttribute('cy', cy);
+        circle.setAttribute('r', 18);
+        circle.setAttribute('fill', '#1a1730');
+        circle.setAttribute('stroke', color);
+        circle.setAttribute('stroke-width', '2');
+        circle.style.cursor = 'pointer';
+
+        circle.addEventListener('mouseenter', (e) => {
+          circle.setAttribute('fill', '#2a2050');
+          showTooltip(e, l, ni, layers);
+        });
+        circle.addEventListener('mousemove', (e) => {
+          tooltip.style.left = (e.clientX + 14) + 'px';
+          tooltip.style.top = (e.clientY - 10) + 'px';
+        });
+        circle.addEventListener('mouseleave', () => {
+          circle.setAttribute('fill', '#1a1730');
+          hideTooltip();
+        });
+        svg.appendChild(circle);
+
+        // Label inside neuron
+        const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        label.setAttribute('x', layerX[l]);
+        label.setAttribute('y', cy + 1);
+        label.setAttribute('text-anchor', 'middle');
+        label.setAttribute('dominant-baseline', 'middle');
+        label.setAttribute('fill', color);
+        label.setAttribute('font-size', '10');
+        label.setAttribute('font-weight', '500');
+        label.style.pointerEvents = 'none';
+
+        if (l === 0) label.textContent = ni === 0 ? 'x₁' : 'x₂';
+        else if (l === layers.length - 1) label.textContent = 'ŷ';
+        else label.textContent = activation === 'ReLU' ? 'R' : activation === 'Sigmoid' ? 'σ' : 'T';
+        svg.appendChild(label);
+      });
+    });
+  }
+
+  function setActivation(btn, name) {
+    document.querySelectorAll('.tog-btn').forEach(b => {
+      if (['ReLU','Sigmoid','Tanh'].includes(b.textContent)) b.classList.remove('active');
+    });
+    btn.classList.add('active');
+    activation = name;
+    drawNetwork();
+  }
+
+  function setInit(btn, name) {
+    document.querySelectorAll('.tog-btn').forEach(b => {
+      if (['Random','Xavier','He'].includes(b.textContent)) b.classList.remove('active');
+    });
+    btn.classList.add('active');
+    initMethod = name;
+    document.getElementById('init-desc').textContent = initDescs[name];
+    drawNetwork();
+  }
+
+  function applyPreset(layers, neurons, act, init) {
+    document.getElementById('layers').value = layers;
+    document.getElementById('layers-out').textContent = layers;
+    document.getElementById('neurons').value = neurons;
+    document.getElementById('neurons-out').textContent = neurons;
+
+    document.querySelectorAll('.tog-btn').forEach(b => {
+      if (b.textContent === act || b.textContent === init) b.classList.add('active');
+      else if (['ReLU','Sigmoid','Tanh'].includes(b.textContent) && b.textContent !== act) b.classList.remove('active');
+      else if (['Random','Xavier','He'].includes(b.textContent) && b.textContent !== init) b.classList.remove('active');
+    });
+
+    activation = act;
+    initMethod = init;
+    document.getElementById('init-desc').textContent = initDescs[init];
+    drawNetwork();
+  }
+
+  document.getElementById('layers').addEventListener('input', e => {
+    document.getElementById('layers-out').textContent = e.target.value;
+    drawNetwork();
+  });
+
+  document.getElementById('neurons').addEventListener('input', e => {
+    document.getElementById('neurons-out').textContent = e.target.value;
+    drawNetwork();
+  });
+
+  window.addEventListener('resize', drawNetwork);
+  drawNetwork();
+</script>
+</body>
+</html>
