@@ -22,21 +22,24 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
     }
 
     header h1 { font-size: 18px; font-weight: 500; color: #c4b5fd; }
 
-    .phase-badge {
+    .badge {
       font-size: 11px; padding: 4px 10px;
-      background: #1e1b35; border: 1px solid #3d3660;
+      border: 1px solid #3d3660;
       border-radius: 20px; color: #a78bfa;
     }
+    .badge.phase1 { background: #1a1730; }
+    .badge.phase2 { background: #1e1b35; border-color: #7c3aed; color: #c4b5fd; }
 
     .app-body {
       display: grid;
-      grid-template-columns: 240px 1fr;
+      grid-template-columns: 260px 1fr 240px;
       flex: 1;
-      min-height: 0;
     }
 
     .sidebar {
@@ -44,7 +47,16 @@
       padding: 20px 16px;
       display: flex;
       flex-direction: column;
-      gap: 22px;
+      gap: 20px;
+      overflow-y: auto;
+    }
+
+    .sidebar-right {
+      border-left: 1px solid #2a2840;
+      padding: 20px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
       overflow-y: auto;
     }
 
@@ -70,39 +82,7 @@
       background: transparent; color: #9ca3af;
       cursor: pointer; transition: all 0.15s;
     }
-    .tog-btn.active {
-      background: #1e1b35; border-color: #7c3aed; color: #c4b5fd;
-    }
-    .tog-btn.warning {
-      background: #2a1a1a; border-color: #7c2020; color: #f87171;
-    }
-
-    .info-box {
-      background: #1a1730; border: 1px solid #2a2840;
-      border-radius: 8px; padding: 12px;
-    }
-    .info-box p { font-size: 12px; color: #9ca3af; line-height: 1.6; }
-    .info-box strong { color: #c4b5fd; }
-
-    .stats-grid {
-      display: grid; grid-template-columns: 1fr 1fr;
-      gap: 8px;
-    }
-    .stat-card {
-      background: #1a1730; border: 1px solid #2a2840;
-      border-radius: 8px; padding: 10px;
-      text-align: center;
-    }
-    .stat-card .val { font-size: 20px; font-weight: 500; color: #c4b5fd; }
-    .stat-card .lbl { font-size: 10px; color: #6b7280; margin-top: 2px; }
-
-    .warning-box {
-      background: #1e1010; border: 1px solid #7c2020;
-      border-radius: 8px; padding: 10px;
-      font-size: 11px; color: #f87171; line-height: 1.5;
-      display: none;
-    }
-    .warning-box.visible { display: block; }
+    .tog-btn.active { background: #1e1b35; border-color: #7c3aed; color: #c4b5fd; }
 
     .preset-btn {
       width: 100%; text-align: left;
@@ -116,6 +96,111 @@
     .preset-btn .preset-name { font-weight: 500; color: #c4b5fd; display: block; }
     .preset-btn .preset-desc { font-size: 10px; color: #6b7280; margin-top: 2px; }
 
+    .stats-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+    }
+    .stat-card {
+      background: #1a1730; border: 1px solid #2a2840;
+      border-radius: 8px; padding: 10px; text-align: center;
+    }
+    .stat-card .val { font-size: 20px; font-weight: 500; color: #c4b5fd; }
+    .stat-card .lbl { font-size: 10px; color: #6b7280; margin-top: 2px; }
+
+    .warning-box {
+      background: #1e1010; border: 1px solid #7c2020;
+      border-radius: 8px; padding: 10px;
+      font-size: 11px; color: #f87171; line-height: 1.5;
+      display: none;
+    }
+    .warning-box.visible { display: block; }
+
+    /* Input panel */
+    .input-panel {
+      background: #1a1730; border: 1px solid #2a2840;
+      border-radius: 10px; padding: 14px;
+    }
+
+    .coord-row {
+      display: flex; align-items: center;
+      gap: 10px; margin-bottom: 10px;
+    }
+    .coord-row label { font-size: 12px; color: #9ca3af; min-width: 24px; }
+    .coord-row input[type=number] {
+      flex: 1; background: #0f0f13;
+      border: 1px solid #3d3660; border-radius: 6px;
+      padding: 6px 10px; color: #c4b5fd; font-size: 13px;
+    }
+    .coord-row input[type=range] { flex: 1; }
+
+    .run-btn {
+      width: 100%; padding: 10px;
+      background: #7c3aed; border: none;
+      border-radius: 8px; color: white;
+      font-size: 13px; font-weight: 500;
+      cursor: pointer; transition: background 0.15s;
+      margin-top: 4px;
+    }
+    .run-btn:hover { background: #6d28d9; }
+    .run-btn:disabled { background: #3d3660; cursor: not-allowed; }
+
+    .random-btn {
+      width: 100%; padding: 7px;
+      background: transparent; border: 1px solid #3d3660;
+      border-radius: 8px; color: #9ca3af;
+      font-size: 12px; cursor: pointer;
+      transition: all 0.15s; margin-top: 6px;
+    }
+    .random-btn:hover { border-color: #7c3aed; color: #c4b5fd; }
+
+    /* Right panel */
+    .info-box {
+      background: #1a1730; border: 1px solid #2a2840;
+      border-radius: 8px; padding: 12px;
+    }
+    .info-box .info-label {
+      font-size: 10px; text-transform: uppercase;
+      letter-spacing: 0.07em; color: #6b7280; margin-bottom: 8px;
+    }
+    .info-box p { font-size: 12px; color: #9ca3af; line-height: 1.6; }
+    .info-box strong { color: #c4b5fd; }
+
+    .activation-log {
+      display: flex; flex-direction: column; gap: 6px;
+      max-height: 260px; overflow-y: auto;
+    }
+
+    .log-entry {
+      background: #0f0f13; border: 1px solid #2a2840;
+      border-radius: 6px; padding: 8px 10px;
+      font-size: 11px; line-height: 1.6;
+      opacity: 0; transform: translateY(4px);
+      transition: opacity 0.3s, transform 0.3s;
+    }
+    .log-entry.visible { opacity: 1; transform: translateY(0); }
+    .log-entry .log-layer { color: #6b7280; font-size: 10px; }
+    .log-entry .log-val { color: #c4b5fd; font-weight: 500; }
+    .log-entry .log-act { color: #10b981; }
+    .log-entry .log-dead { color: #f87171; }
+
+    .output-result {
+      background: #1a1730; border: 2px solid #7c3aed;
+      border-radius: 10px; padding: 14px; text-align: center;
+      display: none;
+    }
+    .output-result.visible { display: block; }
+    .output-result .out-val {
+      font-size: 36px; font-weight: 500; color: #c4b5fd;
+    }
+    .output-result .out-label {
+      font-size: 12px; color: #9ca3af; margin-top: 4px;
+    }
+    .output-result .out-class {
+      font-size: 14px; font-weight: 500; margin-top: 8px;
+      padding: 4px 12px; border-radius: 20px; display: inline-block;
+    }
+    .out-class.classA { background: #1e3a2f; color: #10b981; }
+    .out-class.classB { background: #2a1a1a; color: #f87171; }
+
     .concept-tag {
       display: inline-block; font-size: 10px;
       padding: 3px 8px; background: #1e1b35;
@@ -126,13 +211,13 @@
     .main {
       display: flex; flex-direction: column;
       align-items: center; justify-content: center;
-      padding: 24px; gap: 16px; position: relative;
+      padding: 20px; gap: 14px;
     }
 
-    #net-canvas { width: 100%; max-width: 860px; }
+    #net-canvas { width: 100%; max-width: 600px; }
 
     .legend {
-      display: flex; gap: 16px; font-size: 11px;
+      display: flex; gap: 14px; font-size: 11px;
       color: #6b7280; flex-wrap: wrap; justify-content: center;
     }
     .legend-item { display: flex; align-items: center; gap: 5px; }
@@ -152,19 +237,25 @@
     #tooltip .tt-title { font-weight: 500; color: #c4b5fd; margin-bottom: 4px; font-size: 12px; }
     #tooltip .tt-row { color: #9ca3af; }
     #tooltip .tt-row span { color: #e8e6f0; }
+
+    .init-desc { margin-top: 8px; font-size: 11px; color: #6b7280; line-height: 1.5; }
   </style>
 </head>
 <body>
 
 <header>
   <h1>Neural Net Visualizer</h1>
-  <span class="phase-badge">Phase 1 — Architecture</span>
+  <div style="display:flex;gap:8px;align-items:center">
+    <span class="badge phase1">Phase 1: Architecture ✓</span>
+    <span class="badge phase2">Phase 2: Forward Pass</span>
+  </div>
 </header>
 
 <div class="app-body">
+
+  <!-- LEFT SIDEBAR -->
   <div class="sidebar">
 
-    <!-- Shape controls -->
     <div>
       <div class="section-label">Network shape</div>
       <div class="slider-row">
@@ -179,7 +270,6 @@
       </div>
     </div>
 
-    <!-- Activation -->
     <div>
       <div class="section-label">Activation function</div>
       <div class="btn-group">
@@ -189,7 +279,6 @@
       </div>
     </div>
 
-    <!-- Weight init -->
     <div>
       <div class="section-label">Weight initialization</div>
       <div class="btn-group">
@@ -197,12 +286,9 @@
         <button class="tog-btn" onclick="setInit(this,'Xavier')">Xavier</button>
         <button class="tog-btn" onclick="setInit(this,'He')">He</button>
       </div>
-      <div style="margin-top:8px; font-size:11px; color:#6b7280; line-height:1.5" id="init-desc">
-        Weights drawn from a uniform random distribution.
-      </div>
+      <div class="init-desc" id="init-desc">Weights drawn from a uniform random distribution.</div>
     </div>
 
-    <!-- Presets -->
     <div>
       <div class="section-label">Architecture presets</div>
       <button class="preset-btn" onclick="applyPreset(1,2,'ReLU','Random')">
@@ -223,57 +309,101 @@
       </button>
     </div>
 
-    <!-- Network stats -->
     <div>
       <div class="section-label">Network summary</div>
       <div class="stats-grid">
-        <div class="stat-card"><div class="val" id="stat-neurons">-</div><div class="lbl">Total neurons</div></div>
-        <div class="stat-card"><div class="val" id="stat-weights">-</div><div class="lbl">Total weights</div></div>
+        <div class="stat-card"><div class="val" id="stat-neurons">-</div><div class="lbl">Neurons</div></div>
+        <div class="stat-card"><div class="val" id="stat-weights">-</div><div class="lbl">Weights</div></div>
         <div class="stat-card"><div class="val" id="stat-params">-</div><div class="lbl">Parameters</div></div>
         <div class="stat-card"><div class="val" id="stat-depth">-</div><div class="lbl">Depth</div></div>
       </div>
       <div class="warning-box" id="overfit-warning">
-        ⚠ <strong>Overfit risk:</strong> This network has many parameters relative to a small dataset. It may memorise rather than learn. You'll see this in Phase 5.
+        ⚠ <strong>Overfit risk:</strong> Too many parameters for a small dataset. You'll see this in Phase 5.
       </div>
     </div>
 
-    <!-- Concepts -->
     <div>
-      <div class="section-label">Concepts in this phase</div>
-      <span class="concept-tag">input layer</span>
-      <span class="concept-tag">hidden layers</span>
-      <span class="concept-tag">output layer</span>
-      <span class="concept-tag">weights</span>
-      <span class="concept-tag">neurons</span>
-      <span class="concept-tag">architecture</span>
-      <span class="concept-tag">weight init</span>
-      <span class="concept-tag">parameters</span>
-      <span class="concept-tag">depth vs width</span>
+      <div class="section-label">Concepts</div>
+      <span class="concept-tag">forward pass</span>
+      <span class="concept-tag">activation</span>
+      <span class="concept-tag">ReLU</span>
+      <span class="concept-tag">sigmoid</span>
+      <span class="concept-tag">weighted sum</span>
+      <span class="concept-tag">dead neurons</span>
+      <span class="concept-tag">signal flow</span>
     </div>
 
   </div>
 
+  <!-- MAIN CANVAS -->
   <div class="main">
-    <svg id="net-canvas"></svg>
-    <div class="legend">
-      <div class="legend-item"><div class="legend-dot" style="background:#7c3aed"></div><span>Input layer</span></div>
-      <div class="legend-item"><div class="legend-dot" style="background:#0ea5e9"></div><span>Hidden layer</span></div>
-      <div class="legend-item"><div class="legend-dot" style="background:#10b981"></div><span>Output layer</span></div>
-      <div class="legend-item"><div class="legend-dot" style="background:#4f46e5"></div><span>Positive weight</span></div>
-      <div class="legend-item"><div class="legend-dot" style="background:#be185d"></div><span>Negative weight</span></div>
-      <div class="legend-item" style="gap:8px"><div style="height:2px;width:24px;background:#6b7280;margin-top:4px"></div><span>Thickness = weight strength</span></div>
+
+    <!-- Input controls -->
+    <div class="input-panel" style="width:100%;max-width:600px">
+      <div class="section-label">Input coordinates</div>
+      <div class="coord-row">
+        <label>x₁</label>
+        <input type="range" id="x1-slider" min="-1" max="1" step="0.01" value="0.5" oninput="syncInput('x1')"/>
+        <input type="number" id="x1" min="-1" max="1" step="0.01" value="0.5" oninput="syncSlider('x1')" style="width:70px"/>
+      </div>
+      <div class="coord-row">
+        <label>x₂</label>
+        <input type="range" id="x2-slider" min="-1" max="1" step="0.01" value="0.3" oninput="syncInput('x2')"/>
+        <input type="number" id="x2" min="-1" max="1" step="0.01" value="0.3" oninput="syncSlider('x2')" style="width:70px"/>
+      </div>
+      <button class="run-btn" id="run-btn" onclick="runForwardPass()">▶ Run Forward Pass</button>
+      <button class="random-btn" onclick="randomizeInputs()">🎲 Random inputs</button>
     </div>
+
+    <svg id="net-canvas"></svg>
+
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#7c3aed"></div><span>Input</span></div>
+      <div class="legend-item"><div class="legend-dot" style="background:#0ea5e9"></div><span>Hidden</span></div>
+      <div class="legend-item"><div class="legend-dot" style="background:#10b981"></div><span>Output</span></div>
+      <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div><span>Activated neuron</span></div>
+      <div class="legend-item"><div class="legend-dot" style="background:#374151;border:1px solid #4b5563"></div><span>Dead neuron (ReLU=0)</span></div>
+    </div>
+  </div>
+
+  <!-- RIGHT SIDEBAR -->
+  <div class="sidebar-right">
+
+    <div class="output-result" id="output-result">
+      <div class="info-label" style="font-size:10px;text-transform:uppercase;letter-spacing:0.07em;color:#6b7280;margin-bottom:8px">Network prediction</div>
+      <div class="out-val" id="out-val">-</div>
+      <div class="out-label">output value (0 to 1)</div>
+      <div class="out-class" id="out-class">-</div>
+    </div>
+
+    <div>
+      <div class="section-label">Step by step log</div>
+      <div class="activation-log" id="act-log">
+        <div style="font-size:11px;color:#4b5563;text-align:center;padding:20px 0">
+          Run the forward pass to see the computation log
+        </div>
+      </div>
+    </div>
+
+    <div class="info-box">
+      <div class="info-label">You are learning</div>
+      <p>
+        <strong>Forward pass</strong> — data flows left to right.<br><br>
+        Each neuron computes a <strong>weighted sum</strong> of its inputs, then applies the <strong>activation function</strong>.<br><br>
+        <strong>Dead neurons</strong> (grey) fired a negative value — ReLU set them to zero.
+      </p>
+    </div>
+
   </div>
 </div>
 
-<!-- Tooltip -->
 <div id="tooltip">
   <div class="tt-title" id="tt-title"></div>
   <div class="tt-row">Layer: <span id="tt-layer"></span></div>
   <div class="tt-row">Inputs: <span id="tt-inputs"></span></div>
   <div class="tt-row">Outputs: <span id="tt-outputs"></span></div>
   <div class="tt-row">Activation: <span id="tt-act"></span></div>
-  <div class="tt-row">Init: <span id="tt-init"></span></div>
+  <div class="tt-row">Value: <span id="tt-val">-</span></div>
 </div>
 
 <script>
@@ -281,6 +411,10 @@
   const tooltip = document.getElementById('tooltip');
   let activation = 'ReLU';
   let initMethod = 'Random';
+  let networkWeights = [];
+  let networkBiases = [];
+  let neuronValues = [];
+  let isAnimating = false;
 
   const INPUT_NEURONS = 2;
   const OUTPUT_NEURONS = 1;
@@ -313,176 +447,321 @@
     return (Math.random() * 2 - 1);
   }
 
+  function activate(x) {
+    if (activation === 'ReLU') return Math.max(0, x);
+    if (activation === 'Sigmoid') return 1 / (1 + Math.exp(-x));
+    if (activation === 'Tanh') return Math.tanh(x);
+    return x;
+  }
+
+  function activateName(x) {
+    if (activation === 'ReLU') return x >= 0 ? `ReLU(${x.toFixed(3)}) = ${x.toFixed(3)}` : `ReLU(${x.toFixed(3)}) = 0 💀 dead`;
+    if (activation === 'Sigmoid') return `σ(${x.toFixed(3)}) = ${(1/(1+Math.exp(-x))).toFixed(3)}`;
+    if (activation === 'Tanh') return `tanh(${x.toFixed(3)}) = ${Math.tanh(x).toFixed(3)}`;
+    return x.toFixed(3);
+  }
+
+  function initNetwork() {
+    const layers = getLayers();
+    networkWeights = [];
+    networkBiases = [];
+    neuronValues = layers.map(c => new Array(c).fill(0));
+    for (let l = 0; l < layers.length - 1; l++) {
+      networkWeights.push(
+        Array.from({ length: layers[l] }, () =>
+          Array.from({ length: layers[l+1] }, () => getWeight(layers[l], layers[l+1]))
+        )
+      );
+      networkBiases.push(new Array(layers[l+1]).fill(0).map(() => (Math.random()-0.5)*0.1));
+    }
+  }
+
   function updateStats(layers) {
     const totalNeurons = layers.reduce((a, b) => a + b, 0);
-    let totalWeights = 0;
-    let totalParams = 0;
+    let totalWeights = 0, totalParams = 0;
     for (let i = 0; i < layers.length - 1; i++) {
-      totalWeights += layers[i] * layers[i + 1];
-      totalParams += layers[i] * layers[i + 1] + layers[i + 1];
+      totalWeights += layers[i] * layers[i+1];
+      totalParams += layers[i] * layers[i+1] + layers[i+1];
     }
     document.getElementById('stat-neurons').textContent = totalNeurons;
     document.getElementById('stat-weights').textContent = totalWeights;
     document.getElementById('stat-params').textContent = totalParams;
     document.getElementById('stat-depth').textContent = layers.length;
-
     const warn = document.getElementById('overfit-warning');
-    if (totalParams > 150) {
-      warn.classList.add('visible');
-    } else {
-      warn.classList.remove('visible');
-    }
+    totalParams > 150 ? warn.classList.add('visible') : warn.classList.remove('visible');
   }
 
-  function showTooltip(e, layerIdx, neuronIdx, layers) {
-    const layerNames = ['Input', ...layers.slice(1, -1).map((_, i) => `Hidden ${i+1}`), 'Output'];
-    const isInput = layerIdx === 0;
-    const isOutput = layerIdx === layers.length - 1;
-    const inputs = isInput ? 0 : layers[layerIdx - 1];
-    const outputs = isOutput ? 0 : layers[layerIdx + 1];
-
-    let neuronName = '';
-    if (isInput) neuronName = neuronIdx === 0 ? 'Input x₁ (x coordinate)' : 'Input x₂ (y coordinate)';
-    else if (isOutput) neuronName = 'Output neuron (prediction ŷ)';
-    else neuronName = `Hidden neuron ${neuronIdx + 1}`;
-
-    document.getElementById('tt-title').textContent = neuronName;
-    document.getElementById('tt-layer').textContent = layerNames[layerIdx];
-    document.getElementById('tt-inputs').textContent = isInput ? 'External data' : inputs;
-    document.getElementById('tt-outputs').textContent = isOutput ? 'Final prediction' : outputs;
-    document.getElementById('tt-act').textContent = isInput ? 'None (raw input)' : activation;
-    document.getElementById('tt-init').textContent = isInput ? 'N/A' : initMethod;
-
-    tooltip.style.left = (e.clientX + 14) + 'px';
-    tooltip.style.top = (e.clientY - 10) + 'px';
-    tooltip.classList.add('visible');
+  function getNeuronColor(layerIdx, layers) {
+    if (layerIdx === 0) return '#7c3aed';
+    if (layerIdx === layers.length - 1) return '#10b981';
+    return '#0ea5e9';
   }
 
-  function hideTooltip() {
-    tooltip.classList.remove('visible');
-  }
-
-  function drawNetwork() {
+  function drawNetwork(highlightLayer = -1, highlightValues = null) {
     const layers = getLayers();
     updateStats(layers);
-
-    const W = Math.max(400, svg.parentElement.clientWidth - 48);
-    const H = 440;
+    const W = Math.max(300, svg.parentElement.clientWidth - 40);
+    const H = 400;
     svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
     svg.setAttribute('height', H);
     svg.innerHTML = '';
 
     const layerX = layers.map((_, i) => (W / (layers.length + 1)) * (i + 1));
     const neuronY = layers.map(count => {
-      const spacing = Math.min(68, (H - 80) / count);
+      const spacing = Math.min(65, (H - 80) / count);
       const total = (count - 1) * spacing;
       const startY = H / 2 - total / 2;
       return Array.from({ length: count }, (_, j) => startY + j * spacing);
     });
 
-    const weights = layers.map((count, l) => {
-      if (l === layers.length - 1) return [];
-      return Array.from({ length: count }, () =>
-        Array.from({ length: layers[l + 1] }, () => getWeight(count, layers[l + 1]))
-      );
-    });
-
     // Draw connections
     for (let l = 0; l < layers.length - 1; l++) {
       for (let i = 0; i < layers[l]; i++) {
-        for (let j = 0; j < layers[l + 1]; j++) {
-          const w = weights[l][i][j];
+        for (let j = 0; j < layers[l+1]; j++) {
+          const w = networkWeights[l] ? networkWeights[l][i][j] : (Math.random()*2-1);
+          const isActive = highlightLayer > l;
           const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
           line.setAttribute('x1', layerX[l]);
           line.setAttribute('y1', neuronY[l][i]);
-          line.setAttribute('x2', layerX[l + 1]);
-          line.setAttribute('y2', neuronY[l + 1][j]);
-          line.setAttribute('stroke', w > 0 ? '#4f46e5' : '#be185d');
-          line.setAttribute('stroke-width', Math.min(Math.abs(w) * 3 + 0.4, 4));
-          line.setAttribute('opacity', Math.min(Math.abs(w) * 0.8 + 0.1, 0.85));
+          line.setAttribute('x2', layerX[l+1]);
+          line.setAttribute('y2', neuronY[l+1][j]);
+
+          if (isActive) {
+            line.setAttribute('stroke', '#f59e0b');
+            line.setAttribute('stroke-width', '1.5');
+            line.setAttribute('opacity', '0.5');
+          } else {
+            line.setAttribute('stroke', w > 0 ? '#4f46e5' : '#be185d');
+            line.setAttribute('stroke-width', Math.min(Math.abs(w)*3+0.4, 4));
+            line.setAttribute('opacity', Math.min(Math.abs(w)*0.8+0.1, 0.85));
+          }
           svg.appendChild(line);
         }
       }
     }
 
     // Draw neurons
-    const colors = ['#7c3aed', '#0ea5e9', '#10b981'];
     layers.forEach((count, l) => {
-      const color = l === 0 ? colors[0] : l === layers.length - 1 ? colors[2] : colors[1];
+      const baseColor = getNeuronColor(l, layers);
 
-      // Layer label
       const layerLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       layerLabel.setAttribute('x', layerX[l]);
       layerLabel.setAttribute('y', 16);
       layerLabel.setAttribute('text-anchor', 'middle');
       layerLabel.setAttribute('fill', '#6b7280');
       layerLabel.setAttribute('font-size', '11');
-      layerLabel.textContent = l === 0 ? 'Input' : l === layers.length - 1 ? 'Output' : `Hidden ${l}`;
+      layerLabel.textContent = l === 0 ? 'Input' : l === layers.length-1 ? 'Output' : `Hidden ${l}`;
       svg.appendChild(layerLabel);
 
-      // Neuron count below label
-      const countLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      countLabel.setAttribute('x', layerX[l]);
-      countLabel.setAttribute('y', 28);
-      countLabel.setAttribute('text-anchor', 'middle');
-      countLabel.setAttribute('fill', '#4b5563');
-      countLabel.setAttribute('font-size', '10');
-      countLabel.textContent = `${count} neuron${count > 1 ? 's' : ''}`;
-      svg.appendChild(countLabel);
-
       neuronY[l].forEach((cy, ni) => {
-        // Outer glow ring
+        const val = highlightValues && highlightValues[l] ? highlightValues[l][ni] : null;
+        const isHighlighted = highlightLayer >= l;
+        const isDead = val !== null && val === 0 && l > 0;
+
+        let fillColor = '#1a1730';
+        let strokeColor = baseColor;
+        let strokeWidth = 2;
+
+        if (isHighlighted && val !== null) {
+          if (isDead) {
+            fillColor = '#1a1a1a';
+            strokeColor = '#4b5563';
+          } else {
+            const intensity = Math.min(Math.abs(val), 1);
+            fillColor = `rgba(245, 158, 11, ${intensity * 0.6 + 0.1})`;
+            strokeColor = '#f59e0b';
+            strokeWidth = 2.5;
+          }
+        }
+
+        // Glow
         const glow = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
         glow.setAttribute('cx', layerX[l]);
         glow.setAttribute('cy', cy);
         glow.setAttribute('r', 22);
         glow.setAttribute('fill', 'none');
-        glow.setAttribute('stroke', color);
+        glow.setAttribute('stroke', strokeColor);
         glow.setAttribute('stroke-width', '1');
-        glow.setAttribute('opacity', '0.2');
+        glow.setAttribute('opacity', isHighlighted ? '0.4' : '0.15');
         svg.appendChild(glow);
 
-        // Main circle
         const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
         circle.setAttribute('cx', layerX[l]);
         circle.setAttribute('cy', cy);
         circle.setAttribute('r', 18);
-        circle.setAttribute('fill', '#1a1730');
-        circle.setAttribute('stroke', color);
-        circle.setAttribute('stroke-width', '2');
+        circle.setAttribute('fill', fillColor);
+        circle.setAttribute('stroke', strokeColor);
+        circle.setAttribute('stroke-width', strokeWidth);
         circle.style.cursor = 'pointer';
 
         circle.addEventListener('mouseenter', (e) => {
-          circle.setAttribute('fill', '#2a2050');
-          showTooltip(e, l, ni, layers);
+          circle.setAttribute('stroke-width', '3');
+          showTooltip(e, l, ni, layers, val);
         });
         circle.addEventListener('mousemove', (e) => {
           tooltip.style.left = (e.clientX + 14) + 'px';
           tooltip.style.top = (e.clientY - 10) + 'px';
         });
         circle.addEventListener('mouseleave', () => {
-          circle.setAttribute('fill', '#1a1730');
-          hideTooltip();
+          circle.setAttribute('stroke-width', strokeWidth);
+          tooltip.classList.remove('visible');
         });
         svg.appendChild(circle);
 
-        // Label inside neuron
         const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         label.setAttribute('x', layerX[l]);
         label.setAttribute('y', cy + 1);
         label.setAttribute('text-anchor', 'middle');
         label.setAttribute('dominant-baseline', 'middle');
-        label.setAttribute('fill', color);
-        label.setAttribute('font-size', '10');
+        label.setAttribute('fill', isHighlighted && val !== null ? (isDead ? '#4b5563' : '#fcd34d') : baseColor);
+        label.setAttribute('font-size', val !== null ? '9' : '10');
         label.setAttribute('font-weight', '500');
         label.style.pointerEvents = 'none';
 
-        if (l === 0) label.textContent = ni === 0 ? 'x₁' : 'x₂';
-        else if (l === layers.length - 1) label.textContent = 'ŷ';
-        else label.textContent = activation === 'ReLU' ? 'R' : activation === 'Sigmoid' ? 'σ' : 'T';
+        if (val !== null) {
+          label.textContent = val.toFixed(2);
+        } else if (l === 0) {
+          label.textContent = ni === 0 ? 'x₁' : 'x₂';
+        } else if (l === layers.length - 1) {
+          label.textContent = 'ŷ';
+        } else {
+          label.textContent = activation === 'ReLU' ? 'R' : activation === 'Sigmoid' ? 'σ' : 'T';
+        }
         svg.appendChild(label);
       });
     });
+  }
+
+  function showTooltip(e, layerIdx, neuronIdx, layers, val) {
+    const layerNames = ['Input', ...layers.slice(1,-1).map((_,i)=>`Hidden ${i+1}`), 'Output'];
+    const isInput = layerIdx === 0;
+    const isOutput = layerIdx === layers.length - 1;
+
+    let neuronName = isInput
+      ? (neuronIdx === 0 ? 'Input x₁ (x coord)' : 'Input x₂ (y coord)')
+      : isOutput ? 'Output neuron (ŷ)' : `Hidden neuron ${neuronIdx+1}`;
+
+    document.getElementById('tt-title').textContent = neuronName;
+    document.getElementById('tt-layer').textContent = layerNames[layerIdx];
+    document.getElementById('tt-inputs').textContent = isInput ? 'External data' : layers[layerIdx-1];
+    document.getElementById('tt-outputs').textContent = isOutput ? 'Final prediction' : layers[layerIdx+1];
+    document.getElementById('tt-act').textContent = isInput ? 'None' : activation;
+    document.getElementById('tt-val').textContent = val !== null ? val.toFixed(4) : 'not yet computed';
+
+    tooltip.style.left = (e.clientX + 14) + 'px';
+    tooltip.style.top = (e.clientY - 10) + 'px';
+    tooltip.classList.add('visible');
+  }
+
+  async function runForwardPass() {
+    if (isAnimating) return;
+    isAnimating = true;
+
+    const btn = document.getElementById('run-btn');
+    btn.disabled = true;
+    btn.textContent = 'Running...';
+
+    const layers = getLayers();
+    const x1 = parseFloat(document.getElementById('x1').value);
+    const x2 = parseFloat(document.getElementById('x2').value);
+
+    // Compute all activations
+    const activations = [[x1, x2]];
+    const preActivations = [[x1, x2]];
+
+    for (let l = 0; l < layers.length - 1; l++) {
+      const layerActs = [];
+      const layerPre = [];
+      for (let j = 0; j < layers[l+1]; j++) {
+        let sum = networkBiases[l][j];
+        for (let i = 0; i < layers[l]; i++) {
+          sum += activations[l][i] * networkWeights[l][i][j];
+        }
+        layerPre.push(sum);
+        const isOutputLayer = l === layers.length - 2;
+        layerActs.push(isOutputLayer ? (1/(1+Math.exp(-sum))) : activate(sum));
+      }
+      preActivations.push(layerPre);
+      activations.push(layerActs);
+    }
+
+    neuronValues = activations;
+
+    // Clear log
+    const log = document.getElementById('act-log');
+    log.innerHTML = '';
+    document.getElementById('output-result').classList.remove('visible');
+
+    // Animate layer by layer
+    for (let l = 0; l <= layers.length - 1; l++) {
+      await new Promise(r => setTimeout(r, 600));
+      drawNetwork(l, activations.map((a, idx) => idx <= l ? a : null));
+
+      // Add log entry
+      if (l === 0) {
+        addLogEntry(`<span class="log-layer">INPUT LAYER</span><br>x₁ = <span class="log-val">${x1}</span>, x₂ = <span class="log-val">${x2}</span>`, log);
+      } else {
+        const layerName = l === layers.length - 1 ? 'OUTPUT LAYER' : `HIDDEN LAYER ${l}`;
+        let html = `<span class="log-layer">${layerName}</span><br>`;
+        activations[l].forEach((v, ni) => {
+          const pre = preActivations[l][ni];
+          const isDead = v === 0 && activation === 'ReLU' && pre < 0;
+          const isOutput = l === layers.length - 1;
+          html += `Neuron ${ni+1}: ${isOutput ? 'σ' : activateName(pre)} → <span class="${isDead ? 'log-dead' : 'log-act'}">${v.toFixed(4)}</span><br>`;
+        });
+        addLogEntry(html, log);
+      }
+    }
+
+    // Show result
+    const output = activations[layers.length-1][0];
+    const resultEl = document.getElementById('output-result');
+    const outVal = document.getElementById('out-val');
+    const outClass = document.getElementById('out-class');
+
+    outVal.textContent = output.toFixed(4);
+    if (output >= 0.5) {
+      outClass.textContent = 'Class A (spiral arm 1)';
+      outClass.className = 'out-class classA';
+    } else {
+      outClass.textContent = 'Class B (spiral arm 2)';
+      outClass.className = 'out-class classB';
+    }
+    resultEl.classList.add('visible');
+
+    btn.disabled = false;
+    btn.textContent = '▶ Run Forward Pass';
+    isAnimating = false;
+  }
+
+  function addLogEntry(html, container) {
+    const entry = document.createElement('div');
+    entry.className = 'log-entry';
+    entry.innerHTML = html;
+    container.appendChild(entry);
+    container.scrollTop = container.scrollHeight;
+    requestAnimationFrame(() => entry.classList.add('visible'));
+  }
+
+  function syncInput(id) {
+    const slider = document.getElementById(`${id}-slider`);
+    const input = document.getElementById(id);
+    input.value = slider.value;
+  }
+
+  function syncSlider(id) {
+    const slider = document.getElementById(`${id}-slider`);
+    const input = document.getElementById(id);
+    slider.value = input.value;
+  }
+
+  function randomizeInputs() {
+    const x1 = (Math.random() * 2 - 1).toFixed(3);
+    const x2 = (Math.random() * 2 - 1).toFixed(3);
+    document.getElementById('x1').value = x1;
+    document.getElementById('x2').value = x2;
+    document.getElementById('x1-slider').value = x1;
+    document.getElementById('x2-slider').value = x2;
   }
 
   function setActivation(btn, name) {
@@ -491,6 +770,7 @@
     });
     btn.classList.add('active');
     activation = name;
+    initNetwork();
     drawNetwork();
   }
 
@@ -501,6 +781,7 @@
     btn.classList.add('active');
     initMethod = name;
     document.getElementById('init-desc').textContent = initDescs[name];
+    initNetwork();
     drawNetwork();
   }
 
@@ -509,30 +790,30 @@
     document.getElementById('layers-out').textContent = layers;
     document.getElementById('neurons').value = neurons;
     document.getElementById('neurons-out').textContent = neurons;
-
     document.querySelectorAll('.tog-btn').forEach(b => {
       if (b.textContent === act || b.textContent === init) b.classList.add('active');
       else if (['ReLU','Sigmoid','Tanh'].includes(b.textContent) && b.textContent !== act) b.classList.remove('active');
       else if (['Random','Xavier','He'].includes(b.textContent) && b.textContent !== init) b.classList.remove('active');
     });
-
     activation = act;
     initMethod = init;
     document.getElementById('init-desc').textContent = initDescs[init];
+    initNetwork();
     drawNetwork();
   }
 
   document.getElementById('layers').addEventListener('input', e => {
     document.getElementById('layers-out').textContent = e.target.value;
-    drawNetwork();
+    initNetwork(); drawNetwork();
   });
 
   document.getElementById('neurons').addEventListener('input', e => {
     document.getElementById('neurons-out').textContent = e.target.value;
-    drawNetwork();
+    initNetwork(); drawNetwork();
   });
 
   window.addEventListener('resize', drawNetwork);
+  initNetwork();
   drawNetwork();
 </script>
 </body>
