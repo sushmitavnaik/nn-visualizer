@@ -6,6 +6,7 @@
   <title>Neural Net Visualizer</title>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.10.0/dist/tf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: system-ui, sans-serif; background: #0f0f13; color: #e8e6f0; min-height: 100vh; display: flex; flex-direction: column; }
@@ -17,7 +18,7 @@
     .badge.active { border-color: #7c3aed; color: #c4b5fd; background: #1e1b35; }
     .badge.done { border-color: #10b981; color: #10b981; background: #0d1f1a; }
 
-    .app-body { display: grid; grid-template-columns: 200px 1fr 1fr; flex: 1; min-height: 0; }
+    .app-body { display: grid; grid-template-columns: 220px 1fr 1fr; flex: 1; min-height: 0; }
 
     .sidebar { border-right: 1px solid #2a2840; padding: 14px 12px; display: flex; flex-direction: column; gap: 16px; overflow-y: auto; }
     .section-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.07em; color: #6b7280; margin-bottom: 7px; }
@@ -47,25 +48,78 @@
 
     .concept-tag { display: inline-block; font-size: 10px; padding: 2px 6px; background: #1e1b35; border: 1px solid #3d3660; border-radius: 20px; color: #a78bfa; margin: 2px; }
 
+    /* Middle */
     .middle { border-right: 1px solid #2a2840; display: flex; flex-direction: column; padding: 14px; gap: 12px; overflow-y: auto; }
 
-    .train-panel { background: #1a1730; border: 1px solid #2a2840; border-radius: 10px; padding: 12px; }
-    .dataset-btns { display: flex; gap: 6px; margin-bottom: 12px; }
-    .ds-btn { flex: 1; padding: 6px; border-radius: 7px; border: 1px solid #3d3660; background: transparent; color: #9ca3af; font-size: 11px; cursor: pointer; transition: all 0.15s; text-align: center; }
-    .ds-btn.active { background: #1e1b35; border-color: #7c3aed; color: #c4b5fd; }
-    .ds-btn .ds-icon { font-size: 16px; display: block; margin-bottom: 2px; }
+    /* Dataset panel */
+    .dataset-panel { background: #1a1730; border: 1px solid #2a2840; border-radius: 10px; padding: 12px; }
+    .ds-tabs { display: flex; gap: 6px; margin-bottom: 12px; }
+    .ds-tab { flex: 1; padding: 6px; border-radius: 7px; border: 1px solid #3d3660; background: transparent; color: #9ca3af; font-size: 11px; cursor: pointer; transition: all 0.15s; text-align: center; }
+    .ds-tab.active { background: #1e1b35; border-color: #7c3aed; color: #c4b5fd; }
+    .ds-tab .ds-icon { font-size: 14px; display: block; margin-bottom: 2px; }
 
-    .train-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-bottom: 10px; }
+    /* Built-in dataset buttons */
+    .builtin-datasets { display: flex; gap: 5px; margin-bottom: 10px; }
+    .ds-btn { flex: 1; padding: 5px; border-radius: 6px; border: 1px solid #3d3660; background: transparent; color: #9ca3af; font-size: 10px; cursor: pointer; transition: all 0.15s; text-align: center; }
+    .ds-btn.active { background: #1e1b35; border-color: #7c3aed; color: #c4b5fd; }
+
+    /* Upload zones */
+    .upload-section { display: none; flex-direction: column; gap: 8px; }
+    .upload-section.visible { display: flex; }
+
+    .upload-zone { border: 2px dashed #3d3660; border-radius: 8px; padding: 16px; text-align: center; cursor: pointer; transition: all 0.15s; position: relative; }
+    .upload-zone:hover { border-color: #7c3aed; background: #1a1730; }
+    .upload-zone.dragover { border-color: #7c3aed; background: #1e1b35; }
+    .upload-zone.loaded { border-color: #10b981; border-style: solid; background: #0d1f1a; }
+    .upload-zone.error { border-color: #f87171; border-style: solid; background: #1e1010; }
+    .upload-zone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+    .upload-zone .uz-icon { font-size: 20px; margin-bottom: 4px; }
+    .upload-zone .uz-title { font-size: 12px; font-weight: 500; color: #c4b5fd; margin-bottom: 2px; }
+    .upload-zone .uz-sub { font-size: 10px; color: #6b7280; }
+    .upload-zone .uz-loaded { font-size: 11px; color: #10b981; margin-top: 4px; }
+    .upload-zone .uz-error { font-size: 11px; color: #f87171; margin-top: 4px; }
+
+    /* Format guide */
+    .format-guide { background: #0f0f13; border: 1px solid #2a2840; border-radius: 8px; padding: 10px; }
+    .format-guide .fg-title { font-size: 11px; font-weight: 500; color: #c4b5fd; margin-bottom: 6px; }
+    .format-guide pre { font-size: 10px; color: #9ca3af; line-height: 1.6; overflow-x: auto; }
+    .format-guide .fg-note { font-size: 10px; color: #6b7280; margin-top: 6px; line-height: 1.5; }
+
+    /* Column picker */
+    .col-picker { background: #0f0f13; border: 1px solid #2a2840; border-radius: 8px; padding: 10px; display: none; }
+    .col-picker.visible { display: block; }
+    .col-picker .cp-title { font-size: 11px; font-weight: 500; color: #c4b5fd; margin-bottom: 8px; }
+    .col-picker-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+    .col-picker-row label { font-size: 11px; color: #9ca3af; min-width: 80px; }
+    .col-picker-row select { flex: 1; background: #1a1730; border: 1px solid #3d3660; border-radius: 6px; padding: 4px 8px; color: #c4b5fd; font-size: 11px; cursor: pointer; }
+    .col-picker-row select:focus { outline: none; border-color: #7c3aed; }
+
+    /* Data summary */
+    .data-summary { display: none; }
+    .data-summary.visible { display: grid; grid-template-columns: repeat(3,1fr); gap: 5px; }
+    .ds-card { background: #0f0f13; border: 1px solid #2a2840; border-radius: 6px; padding: 6px; text-align: center; }
+    .ds-card .dsv { font-size: 14px; font-weight: 500; color: #c4b5fd; }
+    .ds-card .dsl { font-size: 9px; color: #6b7280; }
+
+    /* Split info */
+    .split-info { background: #1a1730; border: 1px solid #2a2840; border-radius: 8px; padding: 8px 10px; font-size: 11px; color: #9ca3af; display: none; }
+    .split-info.visible { display: block; }
+    .split-info strong { color: #c4b5fd; }
+
+    /* Train controls */
+    .train-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-top: 10px; }
     .train-btn { padding: 9px; border-radius: 7px; border: none; font-size: 12px; font-weight: 500; cursor: pointer; transition: all 0.15s; }
     .train-btn.start { background: #7c3aed; color: white; }
     .train-btn.start:hover { background: #6d28d9; }
     .train-btn.reset { background: transparent; border: 1px solid #3d3660; color: #9ca3af; }
     .train-btn.reset:hover { border-color: #7c3aed; color: #c4b5fd; }
 
-    .train-stat-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 5px; }
+    .train-stat-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 5px; margin-top: 8px; }
     .train-stat { background: #0f0f13; border: 1px solid #2a2840; border-radius: 5px; padding: 5px; text-align: center; }
-    .train-stat .ts-val { font-size: 14px; font-weight: 500; color: #c4b5fd; }
+    .train-stat .ts-val { font-size: 13px; font-weight: 500; color: #c4b5fd; }
     .train-stat .ts-lbl { font-size: 9px; color: #6b7280; }
+    .train-stat.highlight .ts-val { color: #10b981; }
+    .train-stat.warn .ts-val { color: #f87171; }
 
     .progress-bar-wrap { background: #0f0f13; border-radius: 4px; height: 3px; overflow: hidden; margin-top: 7px; }
     .progress-bar { height: 100%; background: #7c3aed; width: 0%; transition: width 0.3s; border-radius: 4px; }
@@ -76,6 +130,7 @@
     .chart-wrap { background: #1a1730; border: 1px solid #2a2840; border-radius: 10px; padding: 10px; }
     .chart-wrap canvas { max-height: 130px; }
 
+    /* Right */
     .right { display: flex; flex-direction: column; padding: 14px; gap: 12px; overflow-y: auto; }
     #net-svg { width: 100%; }
 
@@ -90,7 +145,7 @@
     .epoch-entry.bad { border-left-color: #f87171; color: #f87171; }
 
     .backprop-panel { background: #1a1730; border: 1px solid #2a2840; border-radius: 8px; padding: 11px; }
-    .gradient-grid { display: flex; flex-direction: column; gap: 4px; max-height: 140px; overflow-y: auto; }
+    .gradient-grid { display: flex; flex-direction: column; gap: 4px; max-height: 120px; overflow-y: auto; }
     .grad-row { display: flex; align-items: center; gap: 8px; }
     .grad-label { font-size: 10px; color: #6b7280; min-width: 70px; }
     .grad-bar-wrap { flex: 1; background: #0f0f13; border-radius: 3px; height: 6px; overflow: hidden; }
@@ -98,6 +153,12 @@
     .grad-val { font-size: 10px; color: #9ca3af; min-width: 45px; text-align: right; }
 
     .lr-desc { font-size: 10px; color: #6b7280; margin-top: -3px; margin-bottom: 6px; line-height: 1.4; }
+
+    /* Overfit alert */
+    .overfit-alert { background: #1e1010; border: 1px solid #f87171; border-radius: 8px; padding: 10px; display: none; }
+    .overfit-alert.visible { display: block; }
+    .overfit-alert .oa-title { font-size: 11px; font-weight: 500; color: #f87171; margin-bottom: 4px; }
+    .overfit-alert .oa-text { font-size: 11px; color: #9ca3af; line-height: 1.5; }
   </style>
 </head>
 <body>
@@ -108,12 +169,14 @@
     <span class="badge done">Phase 1 ✓</span>
     <span class="badge done">Phase 2 ✓</span>
     <span class="badge done">Phase 3 ✓</span>
-    <span class="badge active">Phase 4: Backprop + Decision Boundary</span>
+    <span class="badge done">Phase 4 ✓</span>
+    <span class="badge active">Phase 5: External Data</span>
   </div>
 </header>
 
 <div class="app-body">
 
+  <!-- SIDEBAR -->
   <div class="sidebar">
     <div>
       <div class="section-label">Network shape</div>
@@ -160,21 +223,21 @@
 
     <div>
       <div class="section-label">Presets</div>
-      <button class="preset-btn" id="preset-shallow" onclick="applyPreset(this,1,4,'relu',3,50)">
+      <button class="preset-btn" onclick="applyPreset(this,1,4,'relu',3,50)">
         <span class="preset-name">Shallow</span>
-        <span class="preset-desc">1 layer — watch boundary fail</span>
+        <span class="preset-desc">1 layer — simple boundary</span>
       </button>
-      <button class="preset-btn" id="preset-balanced" onclick="applyPreset(this,3,6,'relu',3,150)">
+      <button class="preset-btn" onclick="applyPreset(this,3,6,'relu',3,150)">
         <span class="preset-name">Balanced</span>
-        <span class="preset-desc">3 layers — good spiral solver</span>
+        <span class="preset-desc">3 layers — good all-rounder</span>
       </button>
-      <button class="preset-btn" id="preset-deep" onclick="applyPreset(this,4,8,'relu',2,200)">
+      <button class="preset-btn" onclick="applyPreset(this,4,8,'relu',2,200)">
         <span class="preset-name">Deep + slow LR</span>
         <span class="preset-desc">Deep net, careful learning</span>
       </button>
-      <button class="preset-btn" id="preset-tanh" onclick="applyPreset(this,2,4,'tanh',3,100)">
-        <span class="preset-name">Tanh + circle</span>
-        <span class="preset-desc">Switch to circle first</span>
+      <button class="preset-btn" onclick="applyPreset(this,2,4,'tanh',3,100)">
+        <span class="preset-name">Tanh baseline</span>
+        <span class="preset-desc">Good for circle/XOR</span>
       </button>
     </div>
 
@@ -191,52 +254,147 @@
 
     <div>
       <div class="section-label">Concepts</div>
-      <span class="concept-tag">backpropagation</span>
-      <span class="concept-tag">gradients</span>
-      <span class="concept-tag">chain rule</span>
-      <span class="concept-tag">decision boundary</span>
-      <span class="concept-tag">weight updates</span>
-      <span class="concept-tag">non-linear separation</span>
+      <span class="concept-tag">train/test split</span>
+      <span class="concept-tag">generalisation</span>
+      <span class="concept-tag">overfitting</span>
+      <span class="concept-tag">external data</span>
+      <span class="concept-tag">feature columns</span>
+      <span class="concept-tag">binary classification</span>
     </div>
   </div>
 
+  <!-- MIDDLE -->
   <div class="middle">
-    <div class="train-panel">
-      <div class="section-label">Dataset</div>
-      <div class="dataset-btns">
-        <button class="ds-btn active" id="ds-spiral" onclick="selectDataset('spiral')"><span class="ds-icon">🌀</span>Spiral</button>
-        <button class="ds-btn" id="ds-circle" onclick="selectDataset('circle')"><span class="ds-icon">⭕</span>Circle</button>
-        <button class="ds-btn" id="ds-xor" onclick="selectDataset('xor')"><span class="ds-icon">✖</span>XOR</button>
+
+    <!-- Dataset panel -->
+    <div class="dataset-panel">
+      <div class="section-label">Data source</div>
+
+      <!-- Source tabs -->
+      <div class="ds-tabs">
+        <button class="ds-tab active" id="tab-builtin" onclick="switchTab('builtin')">
+          <span class="ds-icon">📊</span>Built-in
+        </button>
+        <button class="ds-tab" id="tab-upload" onclick="switchTab('upload')">
+          <span class="ds-icon">📂</span>Upload CSV
+        </button>
       </div>
+
+      <!-- Built-in datasets -->
+      <div id="builtin-section">
+        <div class="builtin-datasets">
+          <button class="ds-btn active" id="ds-spiral" onclick="selectBuiltin('spiral')">🌀 Spiral</button>
+          <button class="ds-btn" id="ds-circle" onclick="selectBuiltin('circle')">⭕ Circle</button>
+          <button class="ds-btn" id="ds-xor" onclick="selectBuiltin('xor')">✖ XOR</button>
+        </div>
+      </div>
+
+      <!-- Upload section -->
+      <div class="upload-section" id="upload-section">
+
+        <!-- Format guide -->
+        <div class="format-guide">
+          <div class="fg-title">📋 CSV format guide</div>
+          <pre>feature1, feature2, ..., label
+0.5, 0.3, 1
+-0.2, 0.8, 0
+0.1, -0.4, 1</pre>
+          <div class="fg-note">
+            • Any number of feature columns allowed<br>
+            • Last column must be the label (0 or 1)<br>
+            • First row must be column headers<br>
+            • Minimum 20 rows recommended
+          </div>
+        </div>
+
+        <!-- Training upload -->
+        <div class="upload-zone" id="train-upload-zone">
+          <input type="file" accept=".csv" onchange="handleFileUpload(event, 'train')"/>
+          <div class="uz-icon">📂</div>
+          <div class="uz-title">Training data</div>
+          <div class="uz-sub">Drop CSV here or click to browse</div>
+          <div class="uz-loaded" id="train-loaded" style="display:none"></div>
+          <div class="uz-error" id="train-error" style="display:none"></div>
+        </div>
+
+        <!-- Test upload -->
+        <div class="upload-zone" id="test-upload-zone">
+          <input type="file" accept=".csv" onchange="handleFileUpload(event, 'test')"/>
+          <div class="uz-icon">🧪</div>
+          <div class="uz-title">Test data <span style="color:#6b7280;font-weight:400">(optional)</span></div>
+          <div class="uz-sub">If not uploaded, 20% of training data is used</div>
+          <div class="uz-loaded" id="test-loaded" style="display:none"></div>
+          <div class="uz-error" id="test-error" style="display:none"></div>
+        </div>
+
+        <!-- Column picker -->
+        <div class="col-picker" id="col-picker">
+          <div class="cp-title">📌 Pick 2 columns to visualize on the decision boundary</div>
+          <div class="col-picker-row">
+            <label>X axis (col 1)</label>
+            <select id="col-x" onchange="updateVisualizationCols()"></select>
+          </div>
+          <div class="col-picker-row">
+            <label>Y axis (col 2)</label>
+            <select id="col-y" onchange="updateVisualizationCols()"></select>
+          </div>
+        </div>
+
+        <!-- Data summary -->
+        <div class="data-summary" id="data-summary">
+          <div class="ds-card"><div class="dsv" id="ds-total">-</div><div class="dsl">Total rows</div></div>
+          <div class="ds-card"><div class="dsv" id="ds-features">-</div><div class="dsl">Features</div></div>
+          <div class="ds-card"><div class="dsv" id="ds-classes">-</div><div class="dsl">Classes</div></div>
+        </div>
+
+      </div>
+
+      <!-- Split info -->
+      <div class="split-info" id="split-info"></div>
+
+      <!-- Train controls -->
       <div class="train-controls">
         <button class="train-btn start" id="train-btn" onclick="toggleTraining()">▶ Train</button>
         <button class="train-btn reset" onclick="resetNetwork()">↺ Reset</button>
       </div>
+
       <div class="train-stat-row">
         <div class="train-stat"><div class="ts-val" id="ts-epoch">0</div><div class="ts-lbl">Epoch</div></div>
         <div class="train-stat"><div class="ts-val" id="ts-loss">-</div><div class="ts-lbl">Loss</div></div>
-        <div class="train-stat"><div class="ts-val" id="ts-acc">-</div><div class="ts-lbl">Accuracy</div></div>
+        <div class="train-stat highlight"><div class="ts-val" id="ts-train-acc">-</div><div class="ts-lbl">Train Acc</div></div>
+        <div class="train-stat" id="test-acc-card"><div class="ts-val" id="ts-test-acc">-</div><div class="ts-lbl">Test Acc</div></div>
       </div>
       <div class="progress-bar-wrap"><div class="progress-bar" id="progress-bar"></div></div>
     </div>
 
+    <!-- Decision boundary -->
     <div class="canvas-wrap">
-      <canvas id="decision-canvas" height="260"></canvas>
+      <canvas id="decision-canvas" height="240"></canvas>
     </div>
 
+    <!-- Loss chart -->
     <div class="chart-wrap">
       <div class="section-label">Loss + Accuracy</div>
       <canvas id="loss-chart"></canvas>
     </div>
 
+    <!-- Overfit alert -->
+    <div class="overfit-alert" id="overfit-alert">
+      <div class="oa-title">⚠ Overfitting detected</div>
+      <div class="oa-text" id="overfit-text"></div>
+    </div>
+
+    <!-- Training log -->
     <div>
       <div class="section-label">Training log</div>
       <div class="epoch-log" id="epoch-log">
-        <div style="font-size:11px;color:#4b5563;padding:6px 0">Hit Train to begin...</div>
+        <div style="font-size:11px;color:#4b5563;padding:6px 0">Select data and hit Train to begin...</div>
       </div>
     </div>
+
   </div>
 
+  <!-- RIGHT -->
   <div class="right">
     <div>
       <div class="section-label">Network weights (live)</div>
@@ -248,17 +406,14 @@
       <div class="gradient-grid" id="gradient-grid">
         <div style="font-size:11px;color:#4b5563;padding:6px 0">Gradients appear during training...</div>
       </div>
-      <div style="margin-top:8px;font-size:10px;color:#6b7280;line-height:1.5">
-        Bar width = how much each layer's weights changed this epoch. Bigger bar = more learning happening there.
-      </div>
     </div>
 
     <div class="info-box">
       <div class="section-label">You are learning</div>
       <p>
-        <strong>Decision boundary</strong> — the line separating what the network thinks is class A vs class B. Watch it reshape as training progresses.<br><br>
-        <strong>Backpropagation</strong> — error flows backwards from output to input. Each weight gets a gradient telling it which direction to move.<br><br>
-        <strong>Chain rule</strong> — how gradients multiply through layers. Deep networks pass gradients through many layers — they can shrink (vanish) or grow (explode).
+        <strong>Train/test split</strong> — the network never sees test data during training. Test accuracy tells you how well it generalises to new data.<br><br>
+        <strong>Overfitting</strong> — when train accuracy is much higher than test accuracy, the network memorised the training data instead of learning the pattern.<br><br>
+        <strong>External data</strong> — any 2-class CSV works. The network automatically adjusts its input layer to match your columns.
       </p>
     </div>
 
@@ -272,27 +427,47 @@
 </div>
 
 <script>
+// ── STATE ────────────────────────────────────────────────
 let activationFn = 'relu';
-let currentDataset = 'spiral';
+let currentTab = 'builtin';
+let currentBuiltin = 'spiral';
 let model = null;
 let isTraining = false;
 let shouldStop = false;
-let lossHistory = [], accHistory = [];
-let cachedData = null;
+let lossHistory = [], trainAccHistory = [], testAccHistory = [];
+let cachedBuiltinData = null;
+
+// Uploaded data
+let uploadedTrainData = null;
+let uploadedTestData = null;
+let allColumns = [];
+let labelColumn = '';
+let vizColX = '';
+let vizColY = '';
 
 const lrValues = [0.001, 0.003, 0.01, 0.03, 0.1, 0.3];
-const lrDescs = ['Very slow — safe but takes long.','Slow and steady.','Good starting point.','Faster — watch the loss.','Aggressive — may bounce.','Very high — likely explodes!'];
+const lrDescs = ['Very slow.','Slow and steady.','Good starting point.','Faster — watch the loss.','Aggressive.','Very high — likely explodes!'];
 const batchValues = [8, 16, 32, 64, 128];
 const GRID_RES = 40;
 
-// ── DATASETS ─────────────────────────────────────────────
+// ── TAB SWITCHING ────────────────────────────────────────
+function switchTab(tab) {
+  currentTab = tab;
+  document.getElementById('tab-builtin').classList.toggle('active', tab === 'builtin');
+  document.getElementById('tab-upload').classList.toggle('active', tab === 'upload');
+  document.getElementById('builtin-section').style.display = tab === 'builtin' ? 'block' : 'none';
+  document.getElementById('upload-section').classList.toggle('visible', tab === 'upload');
+  resetNetwork();
+}
+
+// ── BUILT-IN DATASETS ────────────────────────────────────
 function generateSpiral(n=100) {
   const X=[], y=[];
   for (let c=0;c<2;c++) for (let i=0;i<n;i++) {
     const r=i/n, t=(i/n)*4*Math.PI+(c*Math.PI)+(Math.random()*0.3);
     X.push([r*Math.sin(t), r*Math.cos(t)]); y.push(c);
   }
-  return {X,y};
+  return {X,y,columns:['x1','x2']};
 }
 function generateCircle(n=100) {
   const X=[], y=[];
@@ -301,7 +476,7 @@ function generateCircle(n=100) {
     X.push([r*Math.cos(a)+(Math.random()-.5)*.1, r*Math.sin(a)+(Math.random()-.5)*.1]);
     y.push(r<0.5?1:0);
   }
-  return {X,y};
+  return {X,y,columns:['x1','x2']};
 }
 function generateXOR(n=200) {
   const X=[], y=[];
@@ -310,11 +485,160 @@ function generateXOR(n=200) {
     X.push([x1+(Math.random()-.5)*.2, x2+(Math.random()-.5)*.2]);
     y.push(x1*x2>0?1:0);
   }
-  return {X,y};
+  return {X,y,columns:['x1','x2']};
 }
-function getDataset() {
-  if (!cachedData) cachedData = currentDataset==='spiral'?generateSpiral():currentDataset==='circle'?generateCircle():generateXOR();
-  return cachedData;
+
+function selectBuiltin(name) {
+  currentBuiltin = name;
+  cachedBuiltinData = null;
+  ['spiral','circle','xor'].forEach(d => document.getElementById(`ds-${d}`).classList.toggle('active', d===name));
+  resetNetwork();
+}
+
+function getActiveData() {
+  if (currentTab === 'builtin') {
+    if (!cachedBuiltinData) {
+      cachedBuiltinData = currentBuiltin==='spiral'?generateSpiral():currentBuiltin==='circle'?generateCircle():generateXOR();
+    }
+    return cachedBuiltinData;
+  } else {
+    if (!uploadedTrainData) return null;
+    return uploadedTrainData;
+  }
+}
+
+// ── CSV UPLOAD ───────────────────────────────────────────
+function handleFileUpload(event, type) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  Papa.parse(file, {
+    header: true,
+    dynamicTyping: true,
+    skipEmptyLines: true,
+    complete: (results) => {
+      if (results.errors.length > 0) {
+        showUploadError(type, 'Could not parse CSV. Check the format guide above.');
+        return;
+      }
+      const rows = results.data;
+      if (rows.length < 10) {
+        showUploadError(type, 'Too few rows. Need at least 10 rows.');
+        return;
+      }
+
+      const cols = results.meta.fields;
+      const lastCol = cols[cols.length - 1];
+      const labels = rows.map(r => r[lastCol]);
+      const uniqueLabels = [...new Set(labels)];
+
+      if (uniqueLabels.length !== 2) {
+        showUploadError(type, `Label column "${lastCol}" must have exactly 2 unique values (0 and 1).`);
+        return;
+      }
+
+      // Normalise labels to 0/1
+      const labelMap = {};
+      uniqueLabels.sort().forEach((v,i) => labelMap[v] = i);
+
+      const featureCols = cols.slice(0, -1);
+      const X = rows.map(r => featureCols.map(c => parseFloat(r[c]) || 0));
+      const y = rows.map(r => labelMap[r[lastCol]]);
+
+      const data = { X, y, columns: featureCols, labelColumn: lastCol, rows: rows.length };
+
+      if (type === 'train') {
+        uploadedTrainData = data;
+        allColumns = featureCols;
+        labelColumn = lastCol;
+        showUploadSuccess('train', `✓ ${file.name} — ${rows.length} rows, ${featureCols.length} features`);
+        updateColumnPicker(featureCols);
+        updateDataSummary(data, type);
+        updateSplitInfo();
+      } else {
+        uploadedTestData = data;
+        showUploadSuccess('test', `✓ ${file.name} — ${rows.length} rows`);
+        updateSplitInfo();
+      }
+
+      resetNetwork();
+    },
+    error: () => showUploadError(type, 'Failed to read file. Make sure it\'s a valid CSV.')
+  });
+}
+
+function showUploadSuccess(type, msg) {
+  const zone = document.getElementById(`${type}-upload-zone`);
+  const loaded = document.getElementById(`${type}-loaded`);
+  const error = document.getElementById(`${type}-error`);
+  zone.classList.add('loaded'); zone.classList.remove('error');
+  loaded.textContent = msg; loaded.style.display = 'block';
+  error.style.display = 'none';
+}
+
+function showUploadError(type, msg) {
+  const zone = document.getElementById(`${type}-upload-zone`);
+  const loaded = document.getElementById(`${type}-loaded`);
+  const error = document.getElementById(`${type}-error`);
+  zone.classList.add('error'); zone.classList.remove('loaded');
+  error.textContent = '✗ ' + msg; error.style.display = 'block';
+  loaded.style.display = 'none';
+}
+
+function updateColumnPicker(cols) {
+  const picker = document.getElementById('col-picker');
+  const selX = document.getElementById('col-x');
+  const selY = document.getElementById('col-y');
+
+  selX.innerHTML = cols.map((c,i) => `<option value="${i}">${c}</option>`).join('');
+  selY.innerHTML = cols.map((c,i) => `<option value="${i}">${c}</option>`).join('');
+  selY.selectedIndex = Math.min(1, cols.length - 1);
+
+  vizColX = 0;
+  vizColY = Math.min(1, cols.length - 1);
+
+  picker.classList.toggle('visible', cols.length > 0);
+}
+
+function updateVisualizationCols() {
+  vizColX = parseInt(document.getElementById('col-x').value);
+  vizColY = parseInt(document.getElementById('col-y').value);
+  drawDecisionBoundary();
+}
+
+function updateDataSummary(data, type) {
+  if (type !== 'train') return;
+  const summary = document.getElementById('data-summary');
+  summary.classList.add('visible');
+  document.getElementById('ds-total').textContent = data.rows;
+  document.getElementById('ds-features').textContent = data.columns.length;
+  document.getElementById('ds-classes').textContent = '2';
+}
+
+function updateSplitInfo() {
+  const info = document.getElementById('split-info');
+  if (!uploadedTrainData) { info.classList.remove('visible'); return; }
+  info.classList.add('visible');
+  if (uploadedTestData) {
+    info.innerHTML = `<strong>Train:</strong> ${uploadedTrainData.rows} rows &nbsp;|&nbsp; <strong>Test:</strong> ${uploadedTestData.rows} rows (your file)`;
+  } else {
+    const trainN = Math.floor(uploadedTrainData.rows * 0.8);
+    const testN = uploadedTrainData.rows - trainN;
+    info.innerHTML = `<strong>Auto split:</strong> ${trainN} rows train &nbsp;|&nbsp; ${testN} rows test (80/20)`;
+  }
+}
+
+// ── TRAIN/TEST SPLIT ─────────────────────────────────────
+function splitData(data, trainRatio=0.8) {
+  const n = data.X.length;
+  const indices = Array.from({length:n}, (_,i)=>i).sort(()=>Math.random()-0.5);
+  const trainN = Math.floor(n * trainRatio);
+  const trainIdx = indices.slice(0, trainN);
+  const testIdx = indices.slice(trainN);
+  return {
+    train: { X: trainIdx.map(i=>data.X[i]), y: trainIdx.map(i=>data.y[i]) },
+    test: { X: testIdx.map(i=>data.X[i]), y: testIdx.map(i=>data.y[i]) }
+  };
 }
 
 // ── DECISION BOUNDARY ────────────────────────────────────
@@ -322,56 +646,92 @@ async function drawDecisionBoundary() {
   const canvas = document.getElementById('decision-canvas');
   const ctx = canvas.getContext('2d');
   const W = canvas.offsetWidth || 400;
-  canvas.width = W; canvas.height = 260;
+  canvas.width = W; canvas.height = 240;
   ctx.fillStyle = '#0f0f13';
-  ctx.fillRect(0,0,W,260);
+  ctx.fillRect(0,0,W,240);
+
+  const data = getActiveData();
+  if (!data) {
+    ctx.fillStyle='#4b5563'; ctx.font='12px system-ui'; ctx.textAlign='center';
+    ctx.fillText('Upload a CSV or select a built-in dataset to begin', W/2, 120);
+    ctx.textAlign='left'; return;
+  }
 
   const pad = 24;
-  const toPixel = (v, size) => pad + ((v+1.3)/2.6)*(size-pad*2);
-  const fromPixel = (p, size) => -1.3 + ((p-pad)/(size-pad*2))*2.6;
 
+  // Get the two visualization columns
+  const colX = currentTab === 'builtin' ? 0 : (vizColX || 0);
+  const colY = currentTab === 'builtin' ? 1 : (vizColY || 1);
+
+  const xVals = data.X.map(r => r[colX]);
+  const yVals = data.X.map(r => r[colY]);
+  const minX = Math.min(...xVals), maxX = Math.max(...xVals);
+  const minY = Math.min(...yVals), maxY = Math.max(...yVals);
+  const padX = (maxX-minX)*0.1||0.1, padY = (maxY-minY)*0.1||0.1;
+
+  const toPixelX = v => pad + ((v-minX+padX)/((maxX-minX)+2*padX))*(W-pad*2);
+  const toPixelY = v => pad + ((v-minY+padY)/((maxY-minY)+2*padY))*(240-pad*2);
+  const fromPixelX = p => minX-padX + ((p-pad)/(W-pad*2))*((maxX-minX)+2*padX);
+  const fromPixelY = p => minY-padY + ((p-pad)/(240-pad*2))*((maxY-minY)+2*padY);
+
+  // Draw decision boundary
   if (model) {
     const cellW = (W-pad*2)/GRID_RES;
-    const cellH = (260-pad*2)/GRID_RES;
+    const cellH = (240-pad*2)/GRID_RES;
+    const numInputs = data.X[0].length;
     const gridPoints = [];
+
     for (let row=0;row<GRID_RES;row++) for (let col=0;col<GRID_RES;col++) {
-      gridPoints.push([fromPixel(pad+col*cellW+cellW/2,W), fromPixel(pad+row*cellH+cellH/2,260)]);
+      const pt = new Array(numInputs).fill(0);
+      pt[colX] = fromPixelX(pad+col*cellW+cellW/2);
+      pt[colY] = fromPixelY(pad+row*cellH+cellH/2);
+      gridPoints.push(pt);
     }
+
     const gridTensor = tf.tensor2d(gridPoints);
     const preds = model.predict(gridTensor).arraySync();
     gridTensor.dispose();
 
     for (let row=0;row<GRID_RES;row++) for (let col=0;col<GRID_RES;col++) {
       const p = preds[row*GRID_RES+col][0];
-      const x = pad+col*cellW, yy = pad+row*cellH;
       ctx.fillStyle = p>0.5 ? `rgba(124,58,237,${p*0.45})` : `rgba(16,185,129,${(1-p)*0.45})`;
-      ctx.fillRect(x,yy,cellW+1,cellH+1);
+      ctx.fillRect(pad+col*cellW, pad+row*cellH, cellW+1, cellH+1);
     }
   }
 
-  const {X,y} = getDataset();
-  X.forEach(([x1,x2],i) => {
-    const px=toPixel(x1,W), py=toPixel(x2,260);
+  // Draw data points
+  data.X.forEach((row, i) => {
+    const px = toPixelX(row[colX]);
+    const py = toPixelY(row[colY]);
     ctx.beginPath(); ctx.arc(px,py,4,0,Math.PI*2);
-    ctx.fillStyle = y[i]===1?'#a78bfa':'#34d399';
+    ctx.fillStyle = data.y[i]===1?'#a78bfa':'#34d399';
     ctx.fill();
-    ctx.strokeStyle = y[i]===1?'#7c3aed':'#10b981';
+    ctx.strokeStyle = data.y[i]===1?'#7c3aed':'#10b981';
     ctx.lineWidth=1; ctx.stroke();
   });
 
-  ctx.strokeStyle='#2a2840'; ctx.lineWidth=0.5;
-  ctx.beginPath(); ctx.moveTo(W/2,pad); ctx.lineTo(W/2,260-pad); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(pad,130); ctx.lineTo(W-pad,130); ctx.stroke();
+  // Axis labels
+  if (currentTab === 'upload' && allColumns.length > 0) {
+    ctx.font='10px system-ui'; ctx.fillStyle='#4b5563';
+    ctx.textAlign='center';
+    ctx.fillText(allColumns[colX], W/2, 240-4);
+    ctx.save(); ctx.translate(12, 120); ctx.rotate(-Math.PI/2);
+    ctx.fillText(allColumns[colY], 0, 0);
+    ctx.restore();
+    ctx.textAlign='left';
+  }
 
-  ctx.font='10px system-ui'; ctx.fillStyle='#4b5563';
-  ctx.fillText('Class A',pad+4,16);
+  // Legend
+  ctx.font='10px system-ui'; ctx.fillStyle='#4b5563'; ctx.textAlign='left';
+  ctx.fillText('Class A', pad+4, 16);
   ctx.beginPath(); ctx.arc(pad+14,22,4,0,Math.PI*2); ctx.fillStyle='#a78bfa'; ctx.fill();
-  ctx.fillStyle='#4b5563'; ctx.fillText('Class B',pad+44,16);
+  ctx.fillStyle='#4b5563';
+  ctx.fillText('Class B', pad+44, 16);
   ctx.beginPath(); ctx.arc(pad+58,22,4,0,Math.PI*2); ctx.fillStyle='#34d399'; ctx.fill();
 
   if (!model) {
-    ctx.fillStyle='#4b5563'; ctx.font='12px system-ui'; ctx.textAlign='center';
-    ctx.fillText('Decision boundary appears when training starts',W/2,130);
+    ctx.fillStyle='#4b5563'; ctx.font='11px system-ui'; ctx.textAlign='center';
+    ctx.fillText('Decision boundary appears when training starts', W/2, 230);
     ctx.textAlign='left';
   }
 }
@@ -381,14 +741,14 @@ function drawNetwork(gradients=null) {
   const svg = document.getElementById('net-svg');
   const layers = getLayers();
   const W = Math.max(180, svg.parentElement.clientWidth-8);
-  const H = 260;
+  const H = 240;
   svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
   svg.setAttribute('height',H);
   svg.innerHTML='';
 
   const layerX = layers.map((_,i)=>(W/(layers.length+1))*(i+1));
   const neuronY = layers.map(count=>{
-    const sp=Math.min(50,(H-50)/count), tot=(count-1)*sp, sy=H/2-tot/2;
+    const sp=Math.min(48,(H-50)/count), tot=(count-1)*sp, sy=H/2-tot/2;
     return Array.from({length:count},(_,j)=>sy+j*sp);
   });
 
@@ -419,24 +779,27 @@ function drawNetwork(gradients=null) {
     const lbl=document.createElementNS('http://www.w3.org/2000/svg','text');
     lbl.setAttribute('x',layerX[l]); lbl.setAttribute('y',11);
     lbl.setAttribute('text-anchor','middle'); lbl.setAttribute('fill','#6b7280'); lbl.setAttribute('font-size','9');
-    lbl.textContent=l===0?'In':l===layers.length-1?'Out':`H${l}`;
+    lbl.textContent=l===0?`In(${count})`:l===layers.length-1?'Out':`H${l}`;
     svg.appendChild(lbl);
 
     neuronY[l].forEach((cy,ni)=>{
       const c=document.createElementNS('http://www.w3.org/2000/svg','circle');
       c.setAttribute('cx',layerX[l]); c.setAttribute('cy',cy);
-      c.setAttribute('r',12); c.setAttribute('fill','#1a1730');
+      c.setAttribute('r',Math.min(12, 22/Math.sqrt(count))); c.setAttribute('fill','#1a1730');
       c.setAttribute('stroke',color); c.setAttribute('stroke-width','1.5');
       svg.appendChild(c);
-      const t=document.createElementNS('http://www.w3.org/2000/svg','text');
-      t.setAttribute('x',layerX[l]); t.setAttribute('y',cy+1);
-      t.setAttribute('text-anchor','middle'); t.setAttribute('dominant-baseline','middle');
-      t.setAttribute('fill',color); t.setAttribute('font-size','8'); t.setAttribute('font-weight','500');
-      t.style.pointerEvents='none';
-      if (l===0) t.textContent=ni===0?'x₁':'x₂';
-      else if (l===layers.length-1) t.textContent='ŷ';
-      else t.textContent=activationFn==='relu'?'R':activationFn==='sigmoid'?'σ':'T';
-      svg.appendChild(t);
+
+      if (count <= 8) {
+        const t=document.createElementNS('http://www.w3.org/2000/svg','text');
+        t.setAttribute('x',layerX[l]); t.setAttribute('y',cy+1);
+        t.setAttribute('text-anchor','middle'); t.setAttribute('dominant-baseline','middle');
+        t.setAttribute('fill',color); t.setAttribute('font-size','8'); t.setAttribute('font-weight','500');
+        t.style.pointerEvents='none';
+        if (l===0) t.textContent=`x${ni+1}`;
+        else if (l===layers.length-1) t.textContent='ŷ';
+        else t.textContent=activationFn==='relu'?'R':activationFn==='sigmoid'?'σ':'T';
+        svg.appendChild(t);
+      }
     });
   });
 }
@@ -469,7 +832,8 @@ function initChart() {
     type:'line',
     data:{ labels:[], datasets:[
       {label:'Loss',data:[],borderColor:'#f59e0b',backgroundColor:'rgba(245,158,11,0.08)',borderWidth:2,pointRadius:0,tension:0.3,fill:true},
-      {label:'Accuracy',data:[],borderColor:'#10b981',backgroundColor:'rgba(16,185,129,0.05)',borderWidth:2,pointRadius:0,tension:0.3,fill:true,yAxisID:'y2'}
+      {label:'Train Acc',data:[],borderColor:'#7c3aed',backgroundColor:'rgba(124,58,237,0.05)',borderWidth:2,pointRadius:0,tension:0.3,fill:false,yAxisID:'y2'},
+      {label:'Test Acc',data:[],borderColor:'#10b981',backgroundColor:'rgba(16,185,129,0.05)',borderWidth:2,pointRadius:0,tension:0.3,fill:false,yAxisID:'y2',borderDash:[4,2]}
     ]},
     options:{
       animation:false, responsive:true,
@@ -485,21 +849,25 @@ function initChart() {
 
 // ── MODEL ────────────────────────────────────────────────
 function getLayers() {
+  const data = getActiveData();
+  const numInputs = data ? data.X[0].length : 2;
   const h=parseInt(document.getElementById('layers').value);
   const n=parseInt(document.getElementById('neurons').value);
-  return [2,...Array(h).fill(n),1];
+  return [numInputs,...Array(h).fill(n),1];
 }
 
-function buildModel() {
+function buildModel(numInputs) {
   if (model) { model.dispose(); model=null; }
-  const layers=getLayers();
+  const h=parseInt(document.getElementById('layers').value);
+  const n=parseInt(document.getElementById('neurons').value);
+  const layers=[numInputs,...Array(h).fill(n),1];
   const lr=lrValues[parseInt(document.getElementById('lr').value)-1];
   model=tf.sequential();
   for (let i=1;i<layers.length;i++) {
     model.add(tf.layers.dense({
       units:layers[i],
       activation:i===layers.length-1?'sigmoid':activationFn,
-      inputShape:i===1?[2]:undefined,
+      inputShape:i===1?[numInputs]:undefined,
       kernelInitializer:activationFn==='relu'?'heNormal':'glorotNormal'
     }));
   }
@@ -507,7 +875,7 @@ function buildModel() {
 }
 
 function updateStats() {
-  const layers=getLayers();
+  const layers = getLayers();
   const totalN=layers.reduce((a,b)=>a+b,0);
   let tw=0,tp=0;
   for (let i=0;i<layers.length-1;i++) { tw+=layers[i]*layers[i+1]; tp+=layers[i]*layers[i+1]+layers[i+1]; }
@@ -526,25 +894,49 @@ async function toggleTraining() {
 }
 
 async function startTraining() {
+  const data = getActiveData();
+  if (!data) {
+    alert('Please select or upload a dataset first.');
+    return;
+  }
+
   isTraining=true; shouldStop=false;
   const btn=document.getElementById('train-btn');
   btn.textContent='⏹ Stop'; btn.style.background='#be185d';
 
   const totalEpochs=parseInt(document.getElementById('epochs').value);
   const batchSize=batchValues[parseInt(document.getElementById('batch').value)-1];
-  const {X,y}=getDataset();
-  const xs=tf.tensor2d(X);
-  const ys=tf.tensor2d(y.map(v=>[v]));
 
-  buildModel();
-  lossHistory=[]; accHistory=[];
+  // Train/test split
+  let trainX, trainY, testX, testY;
+  if (currentTab === 'upload' && uploadedTestData) {
+    trainX = data.X; trainY = data.y;
+    testX = uploadedTestData.X; testY = uploadedTestData.y;
+  } else {
+    const split = splitData(data, 0.8);
+    trainX = split.train.X; trainY = split.train.y;
+    testX = split.test.X; testY = split.test.y;
+  }
+
+  const numInputs = trainX[0].length;
+  const xs = tf.tensor2d(trainX);
+  const ys = tf.tensor2d(trainY.map(v=>[v]));
+  const xsTest = tf.tensor2d(testX);
+  const ysTest = tf.tensor2d(testY.map(v=>[v]));
+
+  buildModel(numInputs);
+  lossHistory=[]; trainAccHistory=[]; testAccHistory=[];
   initChart();
   document.getElementById('epoch-log').innerHTML='';
   document.getElementById('weight-log').innerHTML='';
+  document.getElementById('overfit-alert').classList.remove('visible');
+  updateStats();
+  drawNetwork();
 
   for (let e=0;e<totalEpochs;e++) {
     if (shouldStop) break;
 
+    // Compute gradients
     let gradMags = [];
     if (e % 5 === 0) {
       try {
@@ -554,12 +946,11 @@ async function startTraining() {
         });
         const layers = getLayers();
         for (let l=0; l<layers.length-1; l++) {
-          const layerWeights = model.layers[l].getWeights()[0];
-          if (layerWeights && grads.grads[layerWeights.name]) {
-            const gArr = grads.grads[layerWeights.name].arraySync();
-            const mag = gArr.flat().reduce((s,v)=>s+Math.abs(v),0)/gArr.flat().length;
-            gradMags.push(mag);
-          } else { gradMags.push(0); }
+          const lw = model.layers[l].getWeights()[0];
+          if (lw && grads.grads[lw.name]) {
+            const gArr = grads.grads[lw.name].arraySync();
+            gradMags.push(gArr.flat().reduce((s,v)=>s+Math.abs(v),0)/gArr.flat().length);
+          } else gradMags.push(0);
         }
         Object.values(grads.grads).forEach(g=>g.dispose());
       } catch(err) {
@@ -567,19 +958,32 @@ async function startTraining() {
       }
     }
 
-    const history=await model.fit(xs, ys, {epochs:1, batchSize, shuffle:true, verbose:0});
-    const loss=history.history.loss[0];
-    const acc=history.history.acc?history.history.acc[0]:history.history.accuracy[0];
+    const history = await model.fit(xs, ys, {epochs:1, batchSize, shuffle:true, verbose:0});
+    const loss = history.history.loss[0];
+    const trainAcc = history.history.acc?history.history.acc[0]:history.history.accuracy[0];
 
-    lossHistory.push(loss); accHistory.push(acc);
+    // Evaluate on test set
+    const evalResult = model.evaluate(xsTest, ysTest, {verbose:0});
+    const testAcc = (await evalResult[1].data())[0];
+    evalResult.forEach(t=>t.dispose());
+
+    lossHistory.push(loss); trainAccHistory.push(trainAcc); testAccHistory.push(testAcc);
+
     document.getElementById('ts-epoch').textContent=e+1;
     document.getElementById('ts-loss').textContent=loss.toFixed(4);
-    document.getElementById('ts-acc').textContent=(acc*100).toFixed(1)+'%';
+    document.getElementById('ts-train-acc').textContent=(trainAcc*100).toFixed(1)+'%';
+    document.getElementById('ts-test-acc').textContent=(testAcc*100).toFixed(1)+'%';
     document.getElementById('progress-bar').style.width=(((e+1)/totalEpochs)*100)+'%';
+
+    // Color test acc card based on gap
+    const gap = trainAcc - testAcc;
+    const testCard = document.getElementById('test-acc-card');
+    testCard.className = 'train-stat ' + (gap > 0.15 ? 'warn' : 'highlight');
 
     lossChart.data.labels.push(e+1);
     lossChart.data.datasets[0].data.push(loss);
-    lossChart.data.datasets[1].data.push(acc);
+    lossChart.data.datasets[1].data.push(trainAcc);
+    lossChart.data.datasets[2].data.push(testAcc);
     lossChart.update('none');
 
     if (e%5===0 || e===totalEpochs-1) {
@@ -589,8 +993,8 @@ async function startTraining() {
     }
 
     if ((e+1)%10===0 || e===0) {
-      const cls = acc>0.85?'great':acc>0.65?'good':loss>1?'bad':'';
-      addEpochLog(`Epoch ${e+1} — Loss: ${loss.toFixed(4)} | Acc: ${(acc*100).toFixed(1)}%`, cls);
+      const cls = testAcc>0.85?'great':testAcc>0.65?'good':loss>1?'bad':'';
+      addEpochLog(`Epoch ${e+1} — Loss: ${loss.toFixed(4)} | Train: ${(trainAcc*100).toFixed(1)}% | Test: ${(testAcc*100).toFixed(1)}%`, cls);
       if (model) {
         const w0=model.layers[0].getWeights()[0].arraySync();
         const maxW=Math.max(...w0.flat().map(Math.abs));
@@ -601,11 +1005,23 @@ async function startTraining() {
     if ((e+1)%3===0) await new Promise(r=>setTimeout(r,10));
   }
 
-  xs.dispose(); ys.dispose();
+  xs.dispose(); ys.dispose(); xsTest.dispose(); ysTest.dispose();
   isTraining=false;
   btn.textContent='▶ Train'; btn.style.background='#7c3aed';
-  const fl=lossHistory[lossHistory.length-1], fa=accHistory[accHistory.length-1];
-  addEpochLog(`✓ Done — Loss: ${fl.toFixed(4)} | Acc: ${(fa*100).toFixed(1)}%`, 'great');
+
+  // Final overfit check
+  const finalTrainAcc = trainAccHistory[trainAccHistory.length-1];
+  const finalTestAcc = testAccHistory[testAccHistory.length-1];
+  const gap = finalTrainAcc - finalTestAcc;
+
+  if (gap > 0.15) {
+    const alert = document.getElementById('overfit-alert');
+    document.getElementById('overfit-text').textContent =
+      `Training accuracy (${(finalTrainAcc*100).toFixed(1)}%) is ${(gap*100).toFixed(1)}% higher than test accuracy (${(finalTestAcc*100).toFixed(1)}%). Your network has memorised the training data. Try: fewer layers, fewer neurons, or more training data.`;
+    alert.classList.add('visible');
+  }
+
+  addEpochLog(`✓ Done — Train: ${(finalTrainAcc*100).toFixed(1)}% | Test: ${(finalTestAcc*100).toFixed(1)}%`, 'great');
   await drawDecisionBoundary();
   drawNetwork();
 }
@@ -626,25 +1042,22 @@ function addWeightLog(text) {
 function resetNetwork() {
   if (isTraining) shouldStop=true;
   if (model) { model.dispose(); model=null; }
-  cachedData=null;
-  lossHistory=[]; accHistory=[];
+  cachedBuiltinData=null;
+  lossHistory=[]; trainAccHistory=[]; testAccHistory=[];
   document.getElementById('ts-epoch').textContent='0';
   document.getElementById('ts-loss').textContent='-';
-  document.getElementById('ts-acc').textContent='-';
+  document.getElementById('ts-train-acc').textContent='-';
+  document.getElementById('ts-test-acc').textContent='-';
   document.getElementById('progress-bar').style.width='0%';
-  document.getElementById('epoch-log').innerHTML='<div style="font-size:11px;color:#4b5563;padding:6px 0">Hit Train to begin...</div>';
+  document.getElementById('epoch-log').innerHTML='<div style="font-size:11px;color:#4b5563;padding:6px 0">Select data and hit Train to begin...</div>';
   document.getElementById('weight-log').innerHTML='<div style="font-size:11px;color:#4b5563;padding:6px 0">Weight updates appear here...</div>';
   document.getElementById('gradient-grid').innerHTML='<div style="font-size:11px;color:#4b5563;padding:6px 0">Gradients appear during training...</div>';
+  document.getElementById('overfit-alert').classList.remove('visible');
   document.querySelectorAll('.preset-btn').forEach(b=>b.classList.remove('active'));
-  initChart(); drawDecisionBoundary(); drawNetwork();
+  initChart(); drawDecisionBoundary(); updateStats(); drawNetwork();
 }
 
-function selectDataset(name) {
-  currentDataset=name; cachedData=null;
-  ['spiral','circle','xor'].forEach(d=>document.getElementById(`ds-${d}`).classList.toggle('active',d===name));
-  resetNetwork();
-}
-
+// ── CONTROLS ─────────────────────────────────────────────
 function setActivation(btn, name) {
   document.querySelectorAll('.tog-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
@@ -669,8 +1082,22 @@ document.getElementById('neurons').addEventListener('input',e=>{ document.getEle
 document.getElementById('lr').addEventListener('input',e=>{ const i=parseInt(e.target.value)-1; document.getElementById('lr-out').textContent=lrValues[i]; document.getElementById('lr-desc').textContent=lrDescs[i]; });
 document.getElementById('epochs').addEventListener('input',e=>document.getElementById('epochs-out').textContent=e.target.value);
 document.getElementById('batch').addEventListener('input',e=>document.getElementById('batch-out').textContent=batchValues[parseInt(e.target.value)-1]);
+
+// Drag and drop
+['train','test'].forEach(type => {
+  const zone = document.getElementById(`${type}-upload-zone`);
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault(); zone.classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if (file) handleFileUpload({target:{files:[file]}}, type);
+  });
+});
+
 window.addEventListener('resize',()=>{ drawDecisionBoundary(); drawNetwork(); });
 
+// ── INIT ─────────────────────────────────────────────────
 updateStats(); drawDecisionBoundary(); drawNetwork(); initChart();
 </script>
 </body>
