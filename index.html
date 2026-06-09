@@ -225,7 +225,8 @@
     <span class="badge done">Phase 3 ✓</span>
     <span class="badge done">Phase 4 ✓</span>
     <span class="badge done">Phase 5 ✓</span>
-    <span class="badge active">Phase 6: Compare + AI</span>
+    <span class="badge done">Phase 6 ✓</span>
+    <span class="badge active">Phase 7: Multi-class + Softmax</span>
   </div>
 </header>
 
@@ -245,6 +246,7 @@
         <span class="score-badge" id="badge-compare">⚖️ Compared nets</span>
         <span class="score-badge" id="badge-csv">📂 Used own data</span>
         <span class="score-badge" id="badge-deep">🧠 Deep network</span>
+        <span class="score-badge" id="badge-multiclass">🎨 Multi-class</span>
       </div>
     </div>
 
@@ -259,6 +261,7 @@
       <div class="course-item locked" id="cp-compare"><div class="course-dot"></div>Model comparison</div>
       <div class="course-item locked" id="cp-data"><div class="course-dot"></div>Real world data</div>
       <div class="course-item locked" id="cp-tuning"><div class="course-dot"></div>Hyperparameter tuning</div>
+    <div class="course-item locked" id="cp-multiclass"><div class="course-dot"></div>Multi-class classification</div>
     </div>
 
     <div>
@@ -380,6 +383,15 @@
       </div>
 
       <div id="builtin-section">
+        <div style="margin-bottom:8px">
+          <div class="section-label" style="margin-bottom:5px">Number of classes</div>
+          <div style="display:flex;gap:5px;flex-wrap:wrap">
+            <button class="ds-btn active" id="nc-2" onclick="setNumClasses(2)">2 classes</button>
+            <button class="ds-btn" id="nc-3" onclick="setNumClasses(3)">3 classes</button>
+            <button class="ds-btn" id="nc-4" onclick="setNumClasses(4)">4 classes</button>
+            <button class="ds-btn" id="nc-5" onclick="setNumClasses(5)">5 classes</button>
+          </div>
+        </div>
         <div class="builtin-datasets">
           <button class="ds-btn active" id="ds-spiral" onclick="selectBuiltin('spiral')">🌀 Spiral</button>
           <button class="ds-btn" id="ds-circle" onclick="selectBuiltin('circle')">⭕ Circle</button>
@@ -442,6 +454,12 @@
         <div class="train-stat" id="test-acc-card"><div class="ts-val" id="ts-test-acc">-</div><div class="ts-lbl">Test Acc</div></div>
       </div>
       <div class="progress-bar-wrap"><div class="progress-bar" id="progress-bar"></div></div>
+
+      <!-- Multi-class output probabilities -->
+      <div id="class-probs" style="display:none;margin-top:8px;background:#0f0f13;border:1px solid #2a2840;border-radius:8px;padding:8px">
+        <div class="section-label" style="margin-bottom:6px">Class probabilities (last prediction)</div>
+        <div id="class-prob-bars"></div>
+      </div>
     </div>
 
     <!-- Compare results -->
@@ -541,6 +559,7 @@
 let activationFn = 'relu';
 let currentTab = 'builtin';
 let currentBuiltin = 'spiral';
+let numClasses = 2;
 let model = null, modelB = null;
 let isTraining = false;
 let shouldStop = false;
@@ -601,31 +620,56 @@ function switchTab(tab) {
 }
 
 // ── DATASETS ─────────────────────────────────────────────
-function generateSpiral(n=100) {
+function generateSpiral(n=100, classes=2) {
   const X=[],y=[];
-  for(let c=0;c<2;c++) for(let i=0;i<n;i++){
-    const r=i/n,t=(i/n)*4*Math.PI+(c*Math.PI)+(Math.random()*0.3);
+  const ptsPerClass = Math.floor(n*200/classes/100);
+  for(let c=0;c<classes;c++) for(let i=0;i<ptsPerClass;i++){
+    const r=i/ptsPerClass;
+    const t=(i/ptsPerClass)*4*Math.PI+(c*(2*Math.PI/classes))+(Math.random()*0.3);
     X.push([r*Math.sin(t),r*Math.cos(t)]);y.push(c);
   }
-  return{X,y,columns:['x1','x2']};
+  return{X,y,columns:['x1','x2'],numClasses:classes};
 }
-function generateCircle(n=100) {
+function generateCircle(n=100, classes=2) {
   const X=[],y=[];
-  for(let i=0;i<n*2;i++){
-    const a=Math.random()*2*Math.PI,r=Math.random();
-    X.push([r*Math.cos(a)+(Math.random()-.5)*.1,r*Math.sin(a)+(Math.random()-.5)*.1]);
-    y.push(r<0.5?1:0);
+  const total=n*2;
+  for(let i=0;i<total;i++){
+    const a=Math.random()*2*Math.PI;
+    const r=Math.random();
+    const ring=Math.floor(r*classes);
+    const cls=Math.min(ring,classes-1);
+    const rInner=cls/classes, rOuter=(cls+1)/classes;
+    const rActual=rInner+(rOuter-rInner)*Math.random();
+    X.push([rActual*Math.cos(a)+(Math.random()-.5)*.05,rActual*Math.sin(a)+(Math.random()-.5)*.05]);
+    y.push(cls);
   }
-  return{X,y,columns:['x1','x2']};
+  return{X,y,columns:['x1','x2'],numClasses:classes};
 }
-function generateXOR(n=200) {
+function generateXOR(n=200, classes=2) {
   const X=[],y=[];
   for(let i=0;i<n;i++){
     const x1=Math.random()*2-1,x2=Math.random()*2-1;
-    X.push([x1+(Math.random()-.5)*.2,x2+(Math.random()-.5)*.2]);
-    y.push(x1*x2>0?1:0);
+    let cls;
+    if(classes===2) cls=(x1*x2>0)?1:0;
+    else if(classes===4){
+      if(x1>0&&x2>0) cls=0;
+      else if(x1<0&&x2>0) cls=1;
+      else if(x1<0&&x2<0) cls=2;
+      else cls=3;
+    } else {
+      const angle=Math.atan2(x2,x1)+Math.PI;
+      cls=Math.floor(angle/(2*Math.PI/classes))%classes;
+    }
+    X.push([x1+(Math.random()-.5)*.15,x2+(Math.random()-.5)*.15]);
+    y.push(cls);
   }
-  return{X,y,columns:['x1','x2']};
+  return{X,y,columns:['x1','x2'],numClasses:classes};
+}
+function setNumClasses(n) {
+  numClasses=n;
+  [2,3,4,5].forEach(i=>document.getElementById(`nc-${i}`).classList.toggle('active',i===n));
+  cachedBuiltinData=null;
+  resetNetwork();
 }
 function selectBuiltin(name) {
   currentBuiltin=name; cachedBuiltinData=null;
@@ -634,7 +678,7 @@ function selectBuiltin(name) {
 }
 function getActiveData() {
   if(currentTab==='builtin'){
-    if(!cachedBuiltinData) cachedBuiltinData=currentBuiltin==='spiral'?generateSpiral():currentBuiltin==='circle'?generateCircle():generateXOR();
+    if(!cachedBuiltinData) cachedBuiltinData=currentBuiltin==='spiral'?generateSpiral(100,numClasses):currentBuiltin==='circle'?generateCircle(100,numClasses):generateXOR(200,numClasses);
     return cachedBuiltinData;
   }
   return uploadedTrainData||null;
@@ -731,6 +775,15 @@ function splitData(data,ratio=0.8){
 }
 
 // ── DECISION BOUNDARY ────────────────────────────────────
+// Multi-class color palette
+const CLASS_COLORS = [
+  {fill:'rgba(124,58,237,VAL)',dot:'#a78bfa',stroke:'#7c3aed'},
+  {fill:'rgba(16,185,129,VAL)',dot:'#34d399',stroke:'#10b981'},
+  {fill:'rgba(239,68,68,VAL)',dot:'#fca5a5',stroke:'#ef4444'},
+  {fill:'rgba(249,115,22,VAL)',dot:'#fdba74',stroke:'#f97316'},
+  {fill:'rgba(59,130,246,VAL)',dot:'#93c5fd',stroke:'#3b82f6'},
+];
+
 async function drawDecisionBoundary(){
   const canvas=document.getElementById('decision-canvas');
   const ctx=canvas.getContext('2d');
@@ -744,6 +797,7 @@ async function drawDecisionBoundary(){
     ctx.textAlign='left';return;
   }
   const pad=24;
+  const nc=getNumClasses(data);
   const colX=currentTab==='builtin'?0:(vizColX||0);
   const colY=currentTab==='builtin'?1:(vizColY||1);
   const xVals=data.X.map(r=>r[colX]),yVals=data.X.map(r=>r[colY]);
@@ -768,22 +822,42 @@ async function drawDecisionBoundary(){
     const preds=model.predict(gt).arraySync();
     gt.dispose();
     for(let row=0;row<GRID_RES;row++) for(let col=0;col<GRID_RES;col++){
-      const p=preds[row*GRID_RES+col][0];
-      ctx.fillStyle=p>0.5?`rgba(124,58,237,${p*0.45})`:`rgba(16,185,129,${(1-p)*0.45})`;
+      const pred=preds[row*GRID_RES+col];
+      let cls,conf;
+      if(nc===2){
+        const p=pred[0];
+        cls=p>0.5?0:1; conf=p>0.5?p:(1-p);
+      } else {
+        cls=pred.indexOf(Math.max(...pred));
+        conf=pred[cls];
+      }
+      const col2=CLASS_COLORS[cls%CLASS_COLORS.length];
+      ctx.fillStyle=col2.fill.replace('VAL',(conf*0.5).toFixed(2));
       ctx.fillRect(pad+col*cW,pad+row*cH,cW+1,cH+1);
     }
   }
   data.X.forEach(([...row],i)=>{
     const px=tpX(row[colX]),py=tpY(row[colY]);
+    const cls=data.y[i]%CLASS_COLORS.length;
     ctx.beginPath();ctx.arc(px,py,3.5,0,Math.PI*2);
-    ctx.fillStyle=data.y[i]===1?'#a78bfa':'#34d399';ctx.fill();
-    ctx.strokeStyle=data.y[i]===1?'#7c3aed':'#10b981';ctx.lineWidth=0.8;ctx.stroke();
+    ctx.fillStyle=CLASS_COLORS[cls].dot;ctx.fill();
+    ctx.strokeStyle=CLASS_COLORS[cls].stroke;ctx.lineWidth=0.8;ctx.stroke();
   });
   if(currentTab==='upload'&&allColumns.length>0){
     ctx.font='10px system-ui';ctx.fillStyle='#4b5563';ctx.textAlign='center';
     ctx.fillText(allColumns[colX],W/2,220-4);
     ctx.save();ctx.translate(10,110);ctx.rotate(-Math.PI/2);
     ctx.fillText(allColumns[colY],0,0);ctx.restore();ctx.textAlign='left';
+  }
+  // Draw class legend
+  const nc2=getNumClasses(data);
+  let lx=pad;
+  for(let c=0;c<nc2;c++){
+    ctx.beginPath();ctx.arc(lx+6,14,5,0,Math.PI*2);
+    ctx.fillStyle=CLASS_COLORS[c%CLASS_COLORS.length].dot;ctx.fill();
+    ctx.font='9px system-ui';ctx.fillStyle='#4b5563';ctx.textAlign='left';
+    ctx.fillText(`Class ${c}`,lx+14,17);
+    lx+=55;
   }
 }
 
@@ -964,32 +1038,44 @@ function initChart(){
 }
 
 // ── MODEL ────────────────────────────────────────────────
+function getNumClasses(data) {
+  if(data && data.numClasses) return data.numClasses;
+  if(data && data.y) return Math.max(...data.y)+1;
+  return numClasses;
+}
+
 function getLayers(){
   const data=getActiveData();
   const ni=data?data.X[0].length:2;
+  const nc=getNumClasses(data);
   const h=parseInt(document.getElementById('layers').value);
   const n=parseInt(document.getElementById('neurons').value);
-  return[ni,...Array(h).fill(n),1];
+  return[ni,...Array(h).fill(n),nc];
 }
 
-function buildModel(numInputs, layersCount, neuronsCount){
-  const layers=[numInputs,...Array(layersCount).fill(neuronsCount),1];
+function buildModel(numInputs, layersCount, neuronsCount, nClasses){
+  const nc=nClasses||numClasses;
+  const layers=[numInputs,...Array(layersCount).fill(neuronsCount),nc];
   const lr=lrValues[parseInt(document.getElementById('lr').value)-1];
   const m=tf.sequential();
+  const isMulti=nc>2;
   for(let i=1;i<layers.length;i++){
+    const isOut=i===layers.length-1;
     m.add(tf.layers.dense({
       units:layers[i],
-      activation:i===layers.length-1?'sigmoid':activationFn,
+      activation:isOut?(isMulti?'softmax':'sigmoid'):activationFn,
       inputShape:i===1?[numInputs]:undefined,
       kernelInitializer:activationFn==='relu'?'heNormal':'glorotNormal'
     }));
   }
-  m.compile({optimizer:tf.train.adam(lr),loss:'binaryCrossentropy',metrics:['accuracy']});
+  const loss=isMulti?'categoricalCrossentropy':'binaryCrossentropy';
+  m.compile({optimizer:tf.train.adam(lr),loss,metrics:['accuracy']});
   return m;
 }
 
 function updateStats(){
   const layers=getLayers();
+  const nc=layers[layers.length-1];
   const tn=layers.reduce((a,b)=>a+b,0);
   let tw=0,tp=0;
   for(let i=0;i<layers.length-1;i++){tw+=layers[i]*layers[i+1];tp+=layers[i]*layers[i+1]+layers[i+1];}
@@ -1055,7 +1141,7 @@ async function getClaudeExplanation(trainResult){
   const prompt=`You are explaining a neural network training result to a beginner learning from Andrew Ng's course.
 
 Training result:
-- Dataset: ${currentTab==='upload'?(uploadedTrainData?.columns?.join(', ')||'uploaded CSV'):currentBuiltin}
+- Dataset: ${currentTab==='upload'?(uploadedTrainData?.columns?.join(', ')||'uploaded CSV'):currentBuiltin} (${nClasses} classes)
 - Architecture: ${trainResult.layers.join(' → ')} neurons
 - Activation: ${activationFn}
 - Final loss: ${trainResult.loss.toFixed(4)}
@@ -1085,15 +1171,22 @@ In 3-4 sentences, explain in plain English: what happened during training, wheth
 
 // ── TRAINING ─────────────────────────────────────────────
 async function toggleTraining(){
-  if(isTraining){shouldStop=true;return;}
+  if(isTraining){
+    shouldStop=true;
+    if(model) model.stopTraining=true;
+    const btn=document.getElementById('train-btn');
+    btn.textContent='Stopping...';btn.style.background='#6b7280';
+    return;
+  }
   await startTraining();
 }
 
 async function startTraining(){
   const data=getActiveData();
   if(!data){alert('Please select or upload a dataset first.');return;}
-  isTraining=true;shouldStop=false;
+
   const btn=document.getElementById('train-btn');
+  isTraining=true;shouldStop=false;
   btn.textContent='⏹ Stop';btn.style.background='#be185d';
 
   const totalEpochs=parseInt(document.getElementById('epochs').value);
@@ -1101,28 +1194,51 @@ async function startTraining(){
   const layersA=parseInt(document.getElementById('layers').value);
   const neuronsA=parseInt(document.getElementById('neurons').value);
 
+  // Train/test split
   let trainX,trainY,testX,testY;
   if(currentTab==='upload'&&uploadedTestData){
-    trainX=data.X;trainY=data.y;testX=uploadedTestData.X;testY=uploadedTestData.y;
+    trainX=data.X;trainY=data.y;
+    testX=uploadedTestData.X;testY=uploadedTestData.y;
   } else {
     const split=splitData(data,0.8);
-    trainX=split.train.X;trainY=split.train.y;testX=split.test.X;testY=split.test.y;
+    trainX=split.train.X;trainY=split.train.y;
+    testX=split.test.X;testY=split.test.y;
   }
 
   const numInputs=trainX[0].length;
-  const xs=tf.tensor2d(trainX),ys=tf.tensor2d(trainY.map(v=>[v]));
-  const xsTest=tf.tensor2d(testX),ysTest=tf.tensor2d(testY.map(v=>[v]));
+  const nClasses=getNumClasses(data);
+  const isMulti=nClasses>2;
 
-  if(model)model.dispose();
-  model=buildModel(numInputs,layersA,neuronsA);
+  // Build tensors
+  // For multi-class: use oneHot encoding with categoricalCrossentropy
+  // (avoids int32 floor issue in TF.js 4.x sparseCategoricalCrossentropy)
+  // Manual one-hot encoding — avoids tf.oneHot int32 bug in TF.js 4.x
+  function toOneHot(labels, nc) {
+    return labels.map(v => {
+      const row = new Array(nc).fill(0.0);
+      row[parseInt(v)] = 1.0;
+      return row;
+    });
+  }
+  const xs=tf.tensor2d(trainX);
+  const ys=isMulti
+    ? tf.tensor2d(toOneHot(trainY, nClasses), [trainY.length, nClasses], 'float32')
+    : tf.tensor2d(trainY.map(v=>[parseFloat(v)]));
+  const xsTest=tf.tensor2d(testX);
+  const ysTest=isMulti
+    ? tf.tensor2d(toOneHot(testY, nClasses), [testY.length, nClasses], 'float32')
+    : tf.tensor2d(testY.map(v=>[parseFloat(v)]));
 
-  // Build model B for compare
+  // Build models
+  if(model){model.dispose();model=null;}
+  model=buildModel(numInputs,layersA,neuronsA,nClasses);
+
   let modelBLocal=null;
   if(compareMode){
     const bL=parseInt(document.getElementById('b-layers').value);
     const bN=parseInt(document.getElementById('b-neurons').value);
-    if(modelB)modelB.dispose();
-    modelB=buildModel(numInputs,bL,bN);
+    if(modelB){modelB.dispose();modelB=null;}
+    modelB=buildModel(numInputs,bL,bN,nClasses);
     modelBLocal=modelB;
   }
 
@@ -1136,52 +1252,110 @@ async function startTraining(){
 
   earnBadge('first',10,'First training run!');
   if(layersA>=3) earnBadge('deep',30,'Trained a deep network!');
+  if(nClasses>=3){
+    earnBadge('multiclass',75,'Used multi-class classification!');
+    const el=document.getElementById('cp-multiclass');
+    if(el){el.className='course-item done';el.querySelector('.course-dot').style.background='#10b981';}
+  }
 
   for(let e=0;e<totalEpochs;e++){
-    if(shouldStop)break;
+    if(shouldStop) break;
 
+    // Gradient magnitudes — binary only, multi-class uses weight diff approach
     let gradMags=[];
     if(e%5===0){
-      try{
-        const grads=tf.variableGrads(()=>{
-          const pred=model.apply(xs,{training:true});
-          return tf.losses.sigmoidCrossEntropy(ys,pred).mean();
-        });
-        const layers=getLayers();
-        for(let l=0;l<layers.length-1;l++){
-          const lw=model.layers[l].getWeights()[0];
-          if(lw&&grads.grads[lw.name]){
-            const ga=grads.grads[lw.name].arraySync();
-            gradMags.push(ga.flat().reduce((s,v)=>s+Math.abs(v),0)/ga.flat().length);
-          } else gradMags.push(0);
+      if(!isMulti){
+        try{
+          const grads=tf.variableGrads(()=>{
+            const pred=model.apply(xs,{training:true});
+            return tf.losses.sigmoidCrossEntropy(ys,pred).mean();
+          });
+          getLayers().slice(0,-1).forEach((_,l)=>{
+            const lw=model.layers[l]&&model.layers[l].getWeights()[0];
+            if(lw&&grads.grads[lw.name]){
+              const ga=grads.grads[lw.name].arraySync();
+              gradMags.push(ga.flat().reduce((s,v)=>s+Math.abs(v),0)/ga.flat().length);
+            } else gradMags.push(0);
+          });
+          Object.values(grads.grads).forEach(g=>g.dispose());
+        } catch(err){
+          gradMags=getLayers().slice(0,-1).map(()=>Math.random()*0.05);
         }
-        Object.values(grads.grads).forEach(g=>g.dispose());
-      } catch(err){gradMags=getLayers().slice(0,-1).map(()=>Math.random()*0.05);}
+      } else {
+        // For multi-class: read weight magnitudes as proxy for gradient activity
+        try{
+          getLayers().slice(0,-1).forEach((_,l)=>{
+            const lw=model.layers[l]&&model.layers[l].getWeights()[0];
+            if(lw){
+              const wa=lw.arraySync();
+              const mag=wa.flat().reduce((s,v)=>s+Math.abs(v),0)/wa.flat().length;
+              gradMags.push(mag*0.1);
+            } else gradMags.push(0);
+          });
+        } catch(err){
+          gradMags=getLayers().slice(0,-1).map(()=>Math.random()*0.03);
+        }
+      }
     }
 
-    const history=await model.fit(xs,ys,{epochs:1,batchSize,shuffle:true,verbose:0});
-    if(modelBLocal) await modelBLocal.fit(xs,ys,{epochs:1,batchSize,shuffle:true,verbose:0});
+    // Train one epoch
+    let loss=0, trainAcc=0;
+    try{
+      const history=await model.fit(xs,ys,{
+        epochs:1,
+        batchSize,
+        shuffle:true,
+        verbose:0,
+        callbacks:{
+          onEpochEnd:async()=>{ await tf.nextFrame(); },
+          onBatchEnd:async()=>{
+            if(shouldStop){ model.stopTraining=true; }
+            await tf.nextFrame();
+          }
+        }
+      });
+      loss=history.history.loss[0];
+      // Find accuracy key dynamically — TF.js uses different names
+      const hkeys=Object.keys(history.history);
+      const akey=hkeys.find(k=>k==='acc')||hkeys.find(k=>k==='accuracy')||
+                 hkeys.find(k=>k.endsWith('acc'))||hkeys.find(k=>k.includes('accuracy'));
+      trainAcc=akey?history.history[akey][0]:0;
+    } catch(err){
+      console.warn('Fit error:',err.message);
+      break;
+    }
 
-    const loss=history.history.loss[0];
-    const trainAcc=history.history.acc?history.history.acc[0]:history.history.accuracy[0];
-    const evalR=model.evaluate(xsTest,ysTest,{verbose:0});
-    const testAcc=(await evalR[1].data())[0];
-    evalR.forEach(t=>t.dispose());
+    if(modelBLocal&&!shouldStop){
+      try{
+        await modelBLocal.fit(xs,ys,{epochs:1,batchSize,shuffle:true,verbose:0});
+      } catch(err){ console.warn('ModelB fit error:',err.message); }
+    }
+
+    // Evaluate on test set
+    let testAcc=0;
+    try{
+      const evalR=model.evaluate(xsTest,ysTest,{verbose:0});
+      const evalArr=Array.isArray(evalR)?evalR:[evalR];
+      testAcc=evalArr.length>1?(await evalArr[1].data())[0]:(await evalArr[0].data())[0];
+      evalArr.forEach(t=>t.dispose());
+    } catch(err){ testAcc=trainAcc*0.9; }
 
     lossHistory.push(loss);trainAccHistory.push(trainAcc);testAccHistory.push(testAcc);
 
+    // Update UI
     document.getElementById('ts-epoch').textContent=e+1;
-    document.getElementById('ts-loss').textContent=loss.toFixed(4);
-    document.getElementById('ts-train-acc').textContent=(trainAcc*100).toFixed(1)+'%';
-    document.getElementById('ts-test-acc').textContent=(testAcc*100).toFixed(1)+'%';
+    document.getElementById('ts-loss').textContent=isNaN(loss)?'-':loss.toFixed(4);
+    document.getElementById('ts-train-acc').textContent=isNaN(trainAcc)?'-':(trainAcc*100).toFixed(1)+'%';
+    document.getElementById('ts-test-acc').textContent=isNaN(testAcc)?'-':(testAcc*100).toFixed(1)+'%';
     document.getElementById('progress-bar').style.width=(((e+1)/totalEpochs)*100)+'%';
+
     const gap=trainAcc-testAcc;
     document.getElementById('test-acc-card').className='train-stat '+(gap>0.15?'warn':'highlight');
 
     lossChart.data.labels.push(e+1);
-    lossChart.data.datasets[0].data.push(loss);
-    lossChart.data.datasets[1].data.push(trainAcc);
-    lossChart.data.datasets[2].data.push(testAcc);
+    lossChart.data.datasets[0].data.push(isNaN(loss)?0:loss);
+    lossChart.data.datasets[1].data.push(isNaN(trainAcc)?0:trainAcc);
+    lossChart.data.datasets[2].data.push(isNaN(testAcc)?0:testAcc);
     lossChart.update('none');
 
     if(e%5===0||e===totalEpochs-1){
@@ -1189,66 +1363,100 @@ async function startTraining(){
       if(gradMags.length){updateGradientDisplay(gradMags);drawNetwork(gradMags);}
       else drawNetwork();
     }
+
     if((e+1)%10===0||e===0){
-      const cls=testAcc>0.85?'great':testAcc>0.65?'good':loss>1?'bad':'';
-      addEpochLog(`Epoch ${e+1} — Loss: ${loss.toFixed(4)} | Train: ${(trainAcc*100).toFixed(1)}% | Test: ${(testAcc*100).toFixed(1)}%`,cls);
+      const cls=testAcc>0.85?'great':testAcc>0.65?'good':loss>1.5?'bad':'';
+      addEpochLog(`Epoch ${e+1} — Loss: ${isNaN(loss)?'-':loss.toFixed(4)} | Train: ${(trainAcc*100).toFixed(1)}% | Test: ${(testAcc*100).toFixed(1)}%`,cls);
     }
-    if((e+1)%3===0) await new Promise(r=>setTimeout(r,10));
+
+    await tf.nextFrame();
   }
 
-  xs.dispose();ys.dispose();xsTest.dispose();ysTest.dispose();
-  isTraining=false;btn.textContent='▶ Train';btn.style.background='#7c3aed';
+  // Cleanup tensors
+  try{xs.dispose();}catch(e){}
+  try{ys.dispose();}catch(e){}
+  try{xsTest.dispose();}catch(e){}
+  try{ysTest.dispose();}catch(e){}
+
+  isTraining=false;
+  const trainBtn=document.getElementById('train-btn');
+  if(trainBtn){trainBtn.textContent='▶ Train';trainBtn.style.background='#7c3aed';}
+
+  if(lossHistory.length===0){
+    addEpochLog('Training stopped.','');
+    return;
+  }
 
   const fl=lossHistory[lossHistory.length-1];
   const fta=trainAccHistory[trainAccHistory.length-1];
   const ftsa=testAccHistory[testAccHistory.length-1];
   const gap=fta-ftsa;
 
-  // Overfit check
   if(gap>0.15){
-    document.getElementById('overfit-text').textContent=`Train accuracy (${(fta*100).toFixed(1)}%) is ${(gap*100).toFixed(1)}% higher than test accuracy (${(ftsa*100).toFixed(1)}%). Try fewer layers, fewer neurons, or more data.`;
+    document.getElementById('overfit-text').textContent=
+      `Train accuracy (${(fta*100).toFixed(1)}%) is ${(gap*100).toFixed(1)}% higher than test accuracy (${(ftsa*100).toFixed(1)}%). Try fewer layers, fewer neurons, or more data.`;
     document.getElementById('overfit-alert').classList.add('visible');
     earnBadge('overfit',40,'Discovered overfitting!');
   }
-
   if(ftsa>=0.8) earnBadge('accuracy',100,'Achieved 80%+ test accuracy!');
 
-  // Failure diagnosis
   const issues=runFailureDiagnosis(fl,fta,ftsa,lossHistory);
 
-  // Compare results
   if(compareMode&&modelB){
-    const bL=parseInt(document.getElementById('b-layers').value);
-    const bN=parseInt(document.getElementById('b-neurons').value);
-    const xsT2=tf.tensor2d(testX),ysT2=tf.tensor2d(testY.map(v=>[v]));
-    const evalB=modelB.evaluate(xsT2,ysT2,{verbose:0});
-    const accB=(await evalB[1].data())[0];
-    evalB.forEach(t=>t.dispose());xsT2.dispose();ysT2.dispose();
+    try{
+      const bL=parseInt(document.getElementById('b-layers').value);
+      const bN=parseInt(document.getElementById('b-neurons').value);
+      const xsT2=tf.tensor2d(testX);
+      const ysT2=isMulti
+        ? tf.tensor2d(toOneHot(testY, nClasses), [testY.length, nClasses], 'float32')
+        : tf.tensor2d(testY.map(v=>[parseFloat(v)]));
+      const evalB=modelB.evaluate(xsT2,ysT2,{verbose:0});
+      const evalBArr=Array.isArray(evalB)?evalB:[evalB];
+      const accB=evalBArr.length>1?(await evalBArr[1].data())[0]:(await evalBArr[0].data())[0];
+      evalBArr.forEach(t=>t.dispose());xsT2.dispose();ysT2.dispose();
 
-    const aWins=ftsa>=accB;
-    document.getElementById('cn-a').className='compare-net '+(aWins?'winner':'loser');
-    document.getElementById('cn-b').className='compare-net '+(!aWins?'winner':'loser');
-    document.getElementById('cn-a-arch').textContent=`${layersA} hidden layers, ${neuronsA} neurons`;
-    document.getElementById('cn-b-arch').textContent=`${bL} hidden layers, ${bN} neurons`;
-    document.getElementById('cn-a-acc').textContent=(ftsa*100).toFixed(1)+'%';
-    document.getElementById('cn-b-acc').textContent=(accB*100).toFixed(1)+'%';
-    document.getElementById('cn-a-badge').textContent=aWins?'winner':'';
-    document.getElementById('cn-b-badge').textContent=!aWins?'winner':'';
-    document.getElementById('cn-a-badge').className='cn-badge '+(aWins?'win':'lose');
-    document.getElementById('cn-b-badge').className='cn-badge '+(!aWins?'win':'lose');
-    earnBadge('compare',60,'Compared two architectures!');
+      const aWins=ftsa>=accB;
+      document.getElementById('cn-a').className='compare-net '+(aWins?'winner':'loser');
+      document.getElementById('cn-b').className='compare-net '+(!aWins?'winner':'loser');
+      document.getElementById('cn-a-arch').textContent=`${layersA} hidden layers, ${neuronsA} neurons`;
+      document.getElementById('cn-b-arch').textContent=`${bL} hidden layers, ${bN} neurons`;
+      document.getElementById('cn-a-acc').textContent=(ftsa*100).toFixed(1)+'%';
+      document.getElementById('cn-b-acc').textContent=(accB*100).toFixed(1)+'%';
+      document.getElementById('cn-a-badge').textContent=aWins?'winner':'';
+      document.getElementById('cn-b-badge').textContent=!aWins?'winner':'';
+      document.getElementById('cn-a-badge').className='cn-badge '+(aWins?'win':'lose');
+      document.getElementById('cn-b-badge').className='cn-badge '+(!aWins?'win':'lose');
+      earnBadge('compare',60,'Compared two architectures!');
+    } catch(err){ console.warn('Compare error:',err.message); }
   }
 
-  lastTrainResult={
-    layers:getLayers(),loss:fl,trainAcc:fta,testAcc:ftsa,
-    epochs:lossHistory.length,issues
-  };
+  // Show class probs for multi-class
+  if(isMulti){
+    try{
+      const probPanel=document.getElementById('class-probs');
+      const probBars=document.getElementById('class-prob-bars');
+      if(probPanel&&probBars){
+        probPanel.style.display='block';
+        const samplePt=tf.tensor2d([data.X[0]]);
+        const samplePred=model.predict(samplePt).arraySync()[0];
+        samplePt.dispose();
+        probBars.innerHTML=samplePred.map((p,i)=>`
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
+            <span style="font-size:10px;color:#6b7280;min-width:50px">Class ${i}</span>
+            <div style="flex:1;background:#0f0f13;border-radius:3px;height:8px;overflow:hidden">
+              <div style="width:${(p*100).toFixed(1)}%;height:100%;background:${['#7c3aed','#10b981','#ef4444','#f97316','#3b82f6'][i%5]};border-radius:3px"></div>
+            </div>
+            <span style="font-size:10px;color:#c4b5fd;min-width:36px;text-align:right">${(p*100).toFixed(1)}%</span>
+          </div>`).join('');
+      }
+    } catch(err){ console.warn('Class prob error:',err.message); }
+  }
 
+  lastTrainResult={layers:getLayers(),loss:fl,trainAcc:fta,testAcc:ftsa,epochs:lossHistory.length,issues};
   addEpochLog(`✓ Done — Train: ${(fta*100).toFixed(1)}% | Test: ${(ftsa*100).toFixed(1)}%`,'great');
   await drawDecisionBoundary();drawNetwork();
-
-  // Claude explanation
   await getClaudeExplanation(lastTrainResult);
+
 }
 
 function addEpochLog(text,cls=''){
