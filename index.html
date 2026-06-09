@@ -382,16 +382,18 @@
         </button>
       </div>
 
-      <div id="builtin-section">
-        <div style="margin-bottom:8px">
-          <div class="section-label" style="margin-bottom:5px">Number of classes</div>
-          <div style="display:flex;gap:5px;flex-wrap:wrap">
-            <button class="ds-btn active" id="nc-2" onclick="setNumClasses(2)">2 classes</button>
-            <button class="ds-btn" id="nc-3" onclick="setNumClasses(3)">3 classes</button>
-            <button class="ds-btn" id="nc-4" onclick="setNumClasses(4)">4 classes</button>
-            <button class="ds-btn" id="nc-5" onclick="setNumClasses(5)">5 classes</button>
-          </div>
+      <!-- Class count selector — visible for both built-in and upload -->
+      <div style="margin-bottom:10px">
+        <div class="section-label" style="margin-bottom:5px">Number of classes <span id="nc-auto-label" style="color:#6b7280;font-weight:400;text-transform:none;letter-spacing:0;font-size:10px"></span></div>
+        <div style="display:flex;gap:5px;flex-wrap:wrap">
+          <button class="ds-btn active" id="nc-2" onclick="setNumClasses(2)">2 classes</button>
+          <button class="ds-btn" id="nc-3" onclick="setNumClasses(3)">3 classes</button>
+          <button class="ds-btn" id="nc-4" onclick="setNumClasses(4)">4 classes</button>
+          <button class="ds-btn" id="nc-5" onclick="setNumClasses(5)">5 classes</button>
         </div>
+      </div>
+
+      <div id="builtin-section">
         <div class="builtin-datasets">
           <button class="ds-btn active" id="ds-spiral" onclick="selectBuiltin('spiral')">🌀 Spiral</button>
           <button class="ds-btn" id="ds-circle" onclick="selectBuiltin('circle')">⭕ Circle</button>
@@ -669,10 +671,23 @@ function setNumClasses(n) {
   numClasses=n;
   [2,3,4,5].forEach(i=>document.getElementById(`nc-${i}`).classList.toggle('active',i===n));
   cachedBuiltinData=null;
-  resetNetwork();
+  // Clear auto-detected label since user is overriding
+  const lbl=document.getElementById('nc-auto-label');
+  if(lbl) lbl.textContent='(manual override)';
+  // For builtin datasets: full reset to regenerate data with new class count
+  // For upload: just redraw network diagram, keep uploaded data intact
+  if(currentTab==='builtin'){
+    resetNetwork();
+  } else {
+    updateStats();
+    drawNetwork();
+    drawDecisionBoundary();
+  }
 }
 function selectBuiltin(name) {
   currentBuiltin=name; cachedBuiltinData=null;
+  const lbl=document.getElementById('nc-auto-label');
+  if(lbl) lbl.textContent='';
   ['spiral','circle','xor'].forEach(d=>document.getElementById(`ds-${d}`).classList.toggle('active',d===name));
   resetNetwork();
 }
@@ -710,6 +725,14 @@ function handleFileUpload(event, type) {
         showUploadSuccess('train',`✓ ${file.name} — ${rows.length} rows, ${featureCols.length} features`);
         updateColumnPicker(featureCols); updateDataSummary(data); updateSplitInfo();
         earnBadge('csv', 50, 'Used your own data!');
+        // Auto-detect and highlight class count from uploaded data
+        const detectedClasses=unique.length;
+        if(detectedClasses>=2&&detectedClasses<=5){
+          numClasses=detectedClasses;
+          [2,3,4,5].forEach(i=>document.getElementById(`nc-${i}`).classList.toggle('active',i===detectedClasses));
+          const lbl=document.getElementById('nc-auto-label');
+          if(lbl) lbl.textContent='(auto-detected from your data)';
+        }
       } else {
         uploadedTestData=data;
         showUploadSuccess('test',`✓ ${file.name} — ${rows.length} rows`);
@@ -1039,9 +1062,12 @@ function initChart(){
 
 // ── MODEL ────────────────────────────────────────────────
 function getNumClasses(data) {
-  if(data && data.numClasses) return data.numClasses;
+  // Always respect manually selected numClasses
+  // For built-in datasets, data.numClasses matches numClasses
+  // For uploaded CSVs, user can override via the class count buttons
+  if(numClasses > 0) return numClasses;
   if(data && data.y) return Math.max(...data.y)+1;
-  return numClasses;
+  return 2;
 }
 
 function getLayers(){
