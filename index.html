@@ -1074,17 +1074,22 @@ function getLayers(){
   const data=getActiveData();
   const ni=data?data.X[0].length:2;
   const nc=getNumClasses(data);
+  const isMulti=nc>2;
+  const outputUnits=isMulti?nc:1;
   const h=parseInt(document.getElementById('layers').value);
   const n=parseInt(document.getElementById('neurons').value);
-  return[ni,...Array(h).fill(n),nc];
+  return[ni,...Array(h).fill(n),outputUnits];
 }
 
 function buildModel(numInputs, layersCount, neuronsCount, nClasses){
   const nc=nClasses||numClasses;
-  const layers=[numInputs,...Array(layersCount).fill(neuronsCount),nc];
+  const isMulti=nc>2;
+  // Binary: 1 output neuron + sigmoid + binaryCrossentropy
+  // Multi:  nc output neurons + softmax + categoricalCrossentropy
+  const outputUnits=isMulti?nc:1;
+  const layers=[numInputs,...Array(layersCount).fill(neuronsCount),outputUnits];
   const lr=lrValues[parseInt(document.getElementById('lr').value)-1];
   const m=tf.sequential();
-  const isMulti=nc>2;
   for(let i=1;i<layers.length;i++){
     const isOut=i===layers.length-1;
     m.add(tf.layers.dense({
